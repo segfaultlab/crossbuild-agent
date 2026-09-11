@@ -9,6 +9,7 @@ from pathlib import Path
 from openai import OpenAI
 
 import errors
+from knowledge import Knowledge
 from mini_agent import load_env
 from tools import REGISTRY, SCHEMAS, ToolError
 from trace import Trace
@@ -19,6 +20,35 @@ ROOT = Path(__file__).resolve().parent.parent
 MODEL = os.environ.get("MODEL", "deepseek-flash")
 MAX_STEPS = int(os.environ.get("MAX_STEPS", "25"))
 REPEAT_LIMIT = 3
+USE_KB = os.environ.get("USE_KB", "0") == "1"
+
+KB_SCHEMA = {
+    "type": "function",
+    "function": {
+        "name": "search_knowledge",
+        "description": "在交叉编译经验库里检索。编译或配置报错且你不确定怎么处理时调用它，"
+                       "把报错信息原文作为查询。不要在没有报错的时候调用。",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "报错信息原文或关键症状描述"},
+            },
+            "required": ["query"],
+        },
+    },
+}
+
+_kb = Knowledge() if USE_KB else None
+
+
+def search_knowledge(workdir, query):
+    return _kb.format(_kb.search(query, topk=3))
+
+
+def tool_set():
+    if not USE_KB:
+        return SCHEMAS, REGISTRY
+    return SCHEMAS + [KB_SCHEMA], {**REGISTRY, "search_knowledge": search_knowledge}
 
 SYSTEM_PROMPT = """你的任务是把一个 C/C++ 项目交叉编译到目标平台。
 
@@ -47,13 +77,14 @@ SYSTEM_PROMPT = """你的任务是把一个 C/C++ 项目交叉编译到目标平
   工具链不匹配，试 -DCMAKE_C_STANDARD / -DCMAKE_CXX_STANDARD，或关掉该项目
   自己的严格检查选项
 - 同一个办法失败两次就换思路，不要重复
+- 报错看不懂或不确定怎么处理时，可以用 search_knowledge 查经验库
 - 成功的判据是 cmake --build 返回 exit=0
 
 完成后用一句话说明结果；失败就说清楚卡在哪一类问题上。"""
 
 
 def call_tool(workdir, name, args):
-    fn = REGISTRY.get(name)
+    fn = tool_set()[1].get(name)
     if fn is None:
         return f"错误：不存在名为 {name} 的工具"
     try:
@@ -112,13 +143,14 @@ def build(source, target, arch):
     os.environ["ZIG_TARGET"] = target
     os.environ["ZIG_ARCH"] = arch
     project = prepare(source, ROOT / "workspace")
-    print(f"项目: {project.name}   目标: {target}")
+    print(f"项目: {project.name}   目标: {target}   知识库: {"开" if USE_KB else "关"}")
     print("=" * 64)
 
     client = OpenAI(api_key=os.environ["DEEPSEEK_API_KEY"], base_url="https://api.deepseek.com")
     tracer = Trace(ROOT / "runs.db")
     run_id = tracer.start(f"cross-build {project.name} -> {target}", project, MODEL)
 
+    schemas = tool_set()[0]
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"把这个项目交叉编译到 {target}。\n\n{survey(project)}"},
@@ -128,7 +160,7 @@ def build(source, target, arch):
     status = "max_steps"
 
     for step in range(1, MAX_STEPS + 1):
-        resp = client.chat.completions.create(model=MODEL, messages=messages, tools=SCHEMAS)
+        resp = client.chat.completions.create(model=MODEL, messages=messages, tools=schemas)
         tracer.add_usage(resp.usage)
         msg = resp.choices[0].message
         messages.append(msg)

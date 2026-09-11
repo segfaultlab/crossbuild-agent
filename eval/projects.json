@@ -1,0 +1,12 @@
+[
+  {"name": "cJSON",        "url": "https://github.com/DaveGamble/cJSON.git",        "tier": "简单", "note": "纯 C，无依赖"},
+  {"name": "fmt",          "url": "https://github.com/fmtlib/fmt.git",              "tier": "简单", "note": "C++ 头文件库带编译目标"},
+  {"name": "json",         "url": "https://github.com/nlohmann/json.git",           "tier": "简单", "note": "header-only，构建目标少"},
+  {"name": "Catch2",       "url": "https://github.com/catchorg/Catch2.git",         "tier": "简单", "note": "C++ 测试框架"},
+  {"name": "spdlog",       "url": "https://github.com/gabime/spdlog.git",           "tier": "中等", "note": "内嵌 fmt"},
+  {"name": "googletest",   "url": "https://github.com/google/googletest.git",       "tier": "中等", "note": "需要 pthread"},
+  {"name": "zlib",         "url": "https://github.com/madler/zlib.git",             "tier": "中等", "note": "老式 CMake，有汇编与平台判断"},
+  {"name": "benchmark",    "url": "https://github.com/google/benchmark.git",        "tier": "中等", "note": "需要关掉测试与 LTO 检测"},
+  {"name": "libpng",       "url": "https://github.com/pnggroup/libpng.git",         "tier": "困难", "note": "依赖 zlib，find_package 会失败"},
+  {"name": "re2",          "url": "https://github.com/google/re2.git",              "tier": "困难", "note": "依赖 abseil"}
+]
