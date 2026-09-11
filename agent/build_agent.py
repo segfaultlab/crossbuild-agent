@@ -26,8 +26,9 @@ KB_SCHEMA = {
     "type": "function",
     "function": {
         "name": "search_knowledge",
-        "description": "在交叉编译经验库里检索。编译或配置报错且你不确定怎么处理时调用它，"
-                       "把报错信息原文作为查询。不要在没有报错的时候调用。",
+        "description": "交叉编译经验库。**每次 configure 或 build 失败后都先查一次**，"
+                       "把报错的关键行作为查询，再决定怎么改。它会给出这类报错的成因和处理办法，"
+                       "能省掉大量试错。没有报错时不要调用。",
         "parameters": {
             "type": "object",
             "properties": {
@@ -77,7 +78,7 @@ SYSTEM_PROMPT = """你的任务是把一个 C/C++ 项目交叉编译到目标平
   工具链不匹配，试 -DCMAKE_C_STANDARD / -DCMAKE_CXX_STANDARD，或关掉该项目
   自己的严格检查选项
 - 同一个办法失败两次就换思路，不要重复
-- 报错看不懂或不确定怎么处理时，可以用 search_knowledge 查经验库
+- 每次 configure 或 build 失败后，先用 search_knowledge 查经验库再动手改
 - 成功的判据是 cmake --build 返回 exit=0
 
 完成后用一句话说明结果；失败就说清楚卡在哪一类问题上。"""

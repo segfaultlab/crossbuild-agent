@@ -1,0 +1,109 @@
+[
+  {
+    "project": "cJSON",
+    "passed": true,
+    "status": "success",
+    "steps": 12,
+    "errors": {
+      "compile_error": 1
+    },
+    "tier": "简单",
+    "note": "纯 C，无依赖",
+    "seconds": 29.0
+  },
+  {
+    "project": "fmt",
+    "passed": true,
+    "status": "success",
+    "steps": 10,
+    "errors": {},
+    "tier": "简单",
+    "note": "C++ 头文件库带编译目标",
+    "seconds": 22.2
+  },
+  {
+    "project": "json",
+    "passed": true,
+    "status": "success",
+    "steps": 11,
+    "errors": {},
+    "tier": "简单",
+    "note": "header-only，构建目标少",
+    "seconds": 104.2
+  },
+  {
+    "project": "Catch2",
+    "passed": true,
+    "status": "success",
+    "steps": 11,
+    "errors": {},
+    "tier": "简单",
+    "note": "C++ 测试框架",
+    "seconds": 35.2
+  },
+  {
+    "project": "spdlog",
+    "passed": true,
+    "status": "success",
+    "steps": 8,
+    "errors": {},
+    "tier": "中等",
+    "note": "内嵌 fmt",
+    "seconds": 19.1
+  },
+  {
+    "project": "googletest",
+    "passed": true,
+    "status": "success",
+    "steps": 6,
+    "errors": {},
+    "tier": "中等",
+    "note": "需要 pthread",
+    "seconds": 16.7
+  },
+  {
+    "project": "zlib",
+    "passed": true,
+    "status": "success",
+    "steps": 9,
+    "errors": {},
+    "tier": "中等",
+    "note": "老式 CMake，有汇编与平台判断",
+    "seconds": 16.0
+  },
+  {
+    "project": "benchmark",
+    "passed": true,
+    "status": "success",
+    "steps": 8,
+    "errors": {},
+    "tier": "中等",
+    "note": "需要关掉测试与 LTO 检测",
+    "seconds": 26.1
+  },
+  {
+    "project": "libpng",
+    "passed": true,
+    "status": "success",
+    "steps": 25,
+    "errors": {
+      "dependency_missing": 1,
+      "cmake_config_error": 1
+    },
+    "tier": "困难",
+    "note": "依赖 zlib，find_package 会失败",
+    "seconds": 64.9
+  },
+  {
+    "project": "re2",
+    "passed": true,
+    "status": "success",
+    "steps": 24,
+    "errors": {
+      "compile_error": 1
+    },
+    "tier": "困难",
+    "note": "依赖 abseil",
+    "seconds": 140.9
+  }
+]

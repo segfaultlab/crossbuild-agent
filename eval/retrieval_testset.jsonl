@@ -1,0 +1,15 @@
+{"q": "error: 'long long' is an extension when C99 mode is not enabled [-Werror,-Wlong-long]", "gold": "k001"}
+{"q": "warning treated as error -Wpedantic cross compile aarch64", "gold": "k001"}
+{"q": "CMake Error: Could NOT find ZLIB (missing: ZLIB_LIBRARY ZLIB_INCLUDE_DIR) libpng cross compile", "gold": "k002"}
+{"q": "re2 requires absl find_package(absl REQUIRED) cross compile to aarch64 linux musl", "gold": "k002"}
+{"q": "No package 'libcurl' found pkg-config cross", "gold": "k002"}
+{"q": "/usr/bin/ld: skipping incompatible /usr/lib/libz.a when searching for -lz", "gold": "k003"}
+{"q": "file format not recognized aarch64 linking", "gold": "k003"}
+{"q": "No CMAKE_C_COMPILER could be found toolchain aarch64 linux musl", "gold": "k004"}
+{"q": "is not able to compile a simple test program zig cc", "gold": "k004"}
+{"q": "fatal error: zlib.h: No such file or directory cross compiling", "gold": "k005"}
+{"q": "fatal error: sys/epoll.h file not found musl target", "gold": "k005"}
+{"q": "怎么关掉测试和示例目标减少交叉编译失败", "gold": "k006"}
+{"q": "BUILD_TESTING examples benchmark 目标交叉编译失败", "gold": "k006"}
+{"q": "编共享库还是静态库 soname 问题 交叉编译", "gold": "k007"}
+{"q": "cannot execute binary file try_run CMAKE_CROSSCOMPILING 交叉编译时要运行目标程序", "gold": "k008"}
