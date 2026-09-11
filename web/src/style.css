@@ -1,0 +1,56 @@
+:root {
+  --bg: #14161a;
+  --panel: #1b1e24;
+  --line: #2b2f37;
+  --text: #d8dce3;
+  --dim: #8b93a1;
+  --accent: #6ea8fe;
+  --ok: #5bc47d;
+  --bad: #e2686a;
+  --warn: #d9a441;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.6 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+code, pre, .mono {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: #262a32;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: default; }
+
+input {
+  font: inherit;
+  color: var(--text);
+  background: #111316;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+input:focus { outline: none; border-color: var(--accent); }
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

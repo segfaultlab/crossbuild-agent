@@ -4,6 +4,7 @@ import shutil
 import subprocess
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
 from openai import OpenAI
@@ -141,89 +142,123 @@ def verify(project):
     return r.returncode == 0, (r.stdout + r.stderr)[-3000:]
 
 
-def build(source, target, arch):
+def build_events(source, target, arch):
     os.environ["ZIG_TARGET"] = target
     os.environ["ZIG_ARCH"] = arch
     project = prepare(source, ROOT / "workspace")
-    print(f"项目: {project.name}   目标: {target}   知识库: {"开" if USE_KB else "关"}")
-    print("=" * 64)
 
     client = OpenAI(api_key=os.environ["DEEPSEEK_API_KEY"], base_url="https://api.deepseek.com")
     tracer = Trace(ROOT / "runs.db")
     run_id = tracer.start(f"cross-build {project.name} -> {target}", project, MODEL)
 
     schemas = tool_set()[0]
+    survey_text = survey(project)
+    yield {"type": "run_started", "run_id": run_id, "project": project.name, "target": target,
+           "model": MODEL, "use_kb": USE_KB, "max_steps": MAX_STEPS, "survey": survey_text}
+
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"把这个项目交叉编译到 {target}。\n\n{survey(project)}"},
+        {"role": "user", "content": f"把这个项目交叉编译到 {target}。\n\n{survey_text}"},
     ]
     seen = {}
     seen_errors = []
     status = "max_steps"
+    step = 0
 
-    for step in range(1, MAX_STEPS + 1):
-        resp = client.chat.completions.create(model=MODEL, messages=messages, tools=schemas)
-        tracer.add_usage(resp.usage)
-        msg = resp.choices[0].message
-        messages.append(msg)
+    try:
+        for step in range(1, MAX_STEPS + 1):
+            resp = client.chat.completions.create(model=MODEL, messages=messages, tools=schemas)
+            tracer.add_usage(resp.usage)
+            msg = resp.choices[0].message
+            messages.append(msg)
 
-        if not msg.tool_calls:
-            print(f"\n[{step}] 模型认为结束: {(msg.content or '')[:200]}")
-            status = "agent_done"
-            break
+            if msg.content:
+                yield {"type": "message", "step": step, "content": msg.content}
 
-        for tc in msg.tool_calls:
-            started = time.perf_counter()
-            try:
-                args = json.loads(tc.function.arguments)
-            except json.JSONDecodeError:
-                args = {}
-                result = f"参数不是合法 JSON: {tc.function.arguments}"
-            else:
-                key = tc.function.name + json.dumps(args, sort_keys=True)
-                seen[key] = seen.get(key, 0) + 1
-                shown = {k: (v[:60] + "...") if isinstance(v, str) and len(v) > 60 else v
-                         for k, v in args.items()}
-                print(f"\n[{step}] {tc.function.name}({shown})")
-                if seen[key] > REPEAT_LIMIT:
-                    result = f"这个调用已经重复 {seen[key]} 次且没有进展，换个思路"
+            if not msg.tool_calls:
+                status = "agent_done"
+                break
+
+            for tc in msg.tool_calls:
+                started = time.perf_counter()
+                try:
+                    args = json.loads(tc.function.arguments)
+                except json.JSONDecodeError:
+                    args = {}
+                    result = f"参数不是合法 JSON: {tc.function.arguments}"
                 else:
-                    result = call_tool(project, tc.function.name, args)
+                    key = tc.function.name + json.dumps(args, sort_keys=True)
+                    seen[key] = seen.get(key, 0) + 1
+                    yield {"type": "tool_call", "step": step, "tool": tc.function.name, "args": args}
+                    if seen[key] > REPEAT_LIMIT:
+                        result = f"这个调用已经重复 {seen[key]} 次且没有进展，换个思路"
+                    else:
+                        result = call_tool(project, tc.function.name, args)
 
-            elapsed = (time.perf_counter() - started) * 1000
-            ok = not result.startswith(("工具失败：", "参数错误：", "未预期的错误：", "错误："))
-            tracer.tool_call(step, tc.function.name, args, ok, result, elapsed)
+                elapsed = (time.perf_counter() - started) * 1000
+                ok = not result.startswith(("工具失败：", "参数错误：", "未预期的错误：", "错误："))
+                tracer.tool_call(step, tc.function.name, args, ok, result, elapsed)
 
-            kinds = errors.classify(result)
-            if kinds:
+                kinds = errors.classify(result)
                 seen_errors.extend(kinds)
-                print(f"  -> [{elapsed:.0f}ms] 报错类型: {kinds}")
-                for d in errors.extract_details(result, 2):
-                    print(f"     {d[:110]}")
-            else:
-                print(f"  -> [{elapsed:.0f}ms] {result.splitlines()[0][:110] if result else ''}")
+                yield {"type": "tool_result", "step": step, "tool": tc.function.name, "ok": ok,
+                       "result": result[:4000], "ms": round(elapsed), "errors": kinds,
+                       "details": errors.extract_details(result, 2) if kinds else []}
 
-            messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
+                messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
 
-        if all(c > REPEAT_LIMIT for c in seen.values()) and len(seen) > 2:
-            status = "stuck"
-            break
+            if all(c > REPEAT_LIMIT for c in seen.values()) and len(seen) > 2:
+                status = "stuck"
+                break
+    except Exception as e:
+        tracer.finish(f"crash:{type(e).__name__}", step, f"{type(e).__name__}: {e}")
+        raise
 
-    print("\n" + "=" * 64)
+    yield {"type": "verifying"}
     passed, log = verify(project)
     status = "success" if passed else ("failed" if status == "agent_done" else status)
     tracer.finish(status, step, log[-1000:])
 
-    from collections import Counter
-    print(f"结果: {'编译通过' if passed else '未通过'}   状态: {status}   步数: {step}")
-    if seen_errors:
-        print(f"遇到的报错类型: {dict(Counter(seen_errors))}")
-    if not passed:
-        print("最后的构建输出:")
-        for line in log.splitlines()[-6:]:
-            print("   ", line[:120])
-    return {"project": project.name, "passed": passed, "status": status, "steps": step,
-            "errors": dict(Counter(seen_errors))}
+    yield {"type": "finished", "run_id": run_id, "project": project.name, "passed": passed,
+           "status": status, "steps": step, "errors": dict(Counter(seen_errors)),
+           "log": log[-3000:]}
+
+
+def build(source, target, arch):
+    summary = None
+    for ev in build_events(source, target, arch):
+        kind = ev["type"]
+        if kind == "run_started":
+            print(f"项目: {ev['project']}   目标: {ev['target']}   知识库: {'开' if ev['use_kb'] else '关'}")
+            print("=" * 64)
+        elif kind == "message":
+            print(f"\n[{ev['step']}] 模型: {ev['content'][:200]}")
+        elif kind == "tool_call":
+            shown = {k: (v[:60] + "...") if isinstance(v, str) and len(v) > 60 else v
+                     for k, v in ev["args"].items()}
+            print(f"\n[{ev['step']}] {ev['tool']}({shown})")
+        elif kind == "tool_result":
+            if ev["errors"]:
+                print(f"  -> [{ev['ms']}ms] 报错类型: {ev['errors']}")
+                for d in ev["details"]:
+                    print(f"     {d[:110]}")
+            else:
+                first = ev["result"].splitlines()[0][:110] if ev["result"] else ""
+                print(f"  -> [{ev['ms']}ms] {first}")
+        elif kind == "verifying":
+            print("\n" + "=" * 64)
+        elif kind == "finished":
+            summary = ev
+            print(f"结果: {'编译通过' if ev['passed'] else '未通过'}   状态: {ev['status']}   步数: {ev['steps']}")
+            if ev["errors"]:
+                print(f"遇到的报错类型: {ev['errors']}")
+            if not ev["passed"]:
+                print("最后的构建输出:")
+                for line in ev["log"].splitlines()[-6:]:
+                    print("   ", line[:120])
+
+    return {"project": summary["project"], "passed": summary["passed"],
+            "status": summary["status"], "steps": summary["steps"], "errors": summary["errors"]}
 
 
 if __name__ == "__main__":
