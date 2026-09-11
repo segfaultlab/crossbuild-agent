@@ -66,7 +66,8 @@ SYSTEM_PROMPT = """你的任务是把一个 C/C++ 项目交叉编译到目标平
 
 命令限制（重要）：
 - 每次只能执行一条命令，不支持 && || | 和重定向，写了也不会生效
-- 可用命令只有 cmake make ninja git ls cat file nm ldd readelf
+- 可用命令只有 cmake make ninja git ls file nm ldd readelf，没有 cat（读文件用 read_file 工具）
+- 只能访问工作目录内的路径，主机上的库和头文件不能用于交叉编译
 - 要删除 build 目录用 cmake -E rm -rf build，没有 rm 可用
 - 想看文件内容直接用 read_file 工具，不要用 cat 或 git grep 绕
 - 编译命令要给足超时，configure 传 180，build 传 300
