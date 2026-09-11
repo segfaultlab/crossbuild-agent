@@ -4,6 +4,8 @@ import tempfile
 from pathlib import Path
 
 ALLOWED_COMMANDS = {"cmake", "make", "ninja", "nm", "ldd", "file", "readelf", "git", "ls", "cat"}
+DENIED_NAMES = {".env", ".netrc", ".npmrc", "id_rsa", "id_ed25519", ".git-credentials"}
+DENIED_SUFFIXES = {".key", ".pem", ".p12", ".keystore"}
 MAX_BYTES = 4000
 MAX_LINES = 100
 DEFAULT_TIMEOUT = 60
@@ -17,6 +19,8 @@ def _resolve(workdir: Path, path: str) -> Path:
     target = (workdir / path).resolve()
     if not str(target).startswith(str(workdir.resolve())):
         raise ToolError(f"路径越界，只允许访问 {workdir} 内的文件")
+    if target.name in DENIED_NAMES or target.suffix in DENIED_SUFFIXES:
+        raise ToolError(f"{target.name} 是凭据类文件，不可读取")
     return target
 
 
@@ -51,7 +55,8 @@ def list_files(workdir: Path, path: str = ".") -> str:
         raise ToolError(f"路径不存在: {path}")
     if target.is_file():
         return f"{path} 是文件，不是目录"
-    entries = sorted(os.listdir(target))
+    entries = [e for e in sorted(os.listdir(target))
+               if e not in DENIED_NAMES and not any(e.endswith(x) for x in DENIED_SUFFIXES)]
     return "\n".join(entries) if entries else "(空目录)"
 
 

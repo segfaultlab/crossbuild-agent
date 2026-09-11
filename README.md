@@ -8,7 +8,7 @@
 ## 当前进度
 
 - [x] 阶段 0：工具层 + 裸写 Tool Calling 循环
-- [ ] 阶段 1：执行记录落 SQLite
+- [x] 阶段 1：执行记录落 SQLite
 - [ ] 阶段 2：编译闭环
 - [ ] 阶段 3：RAG
 - [ ] 阶段 4：评测
@@ -18,10 +18,13 @@
 
 ```bash
 pip install openai
-export DEEPSEEK_API_KEY=sk-xxx
+cp .env.example .env   # 填入 DEEPSEEK_API_KEY，.env 已被 gitignore
 cd agent
 python mini_agent.py "看看这个目录里有什么，然后告诉我 cmake 版本" ..
 ```
+
+每次运行会在 `runs.db` 落一条 run 和若干条 tool_call 记录（工具、参数、成败、
+耗时、token），用来复盘和做阶段 4 的评测统计。
 
 ## 工具层的边界
 
@@ -34,5 +37,6 @@ python mini_agent.py "看看这个目录里有什么，然后告诉我 cmake 版
 | 超时 | subprocess timeout，超时 kill 并返回可读信息 |
 | 输出截断 | 超过 4000 字符保留头尾各半，中间标注省略字符数 |
 | 异常包装 | 工具失败不抛给主循环，返回文本让模型自己判断下一步 |
+| 凭据防护 | `.env`、`id_rsa`、`*.key` 等即使在工作目录内也拒绝读取，且不出现在列目录结果里 |
 
 已实测：越界读取、非白名单命令、超时命令、10 万字符输出，四种情况都拦住且不中断循环。
