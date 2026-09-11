@@ -22,7 +22,7 @@ def load_env(path=Path(__file__).resolve().parent.parent / ".env"):
 
 load_env()
 
-MODEL = os.environ.get("MODEL", "deepseek-chat")
+MODEL = os.environ.get("MODEL", "deepseek-flash")
 MAX_STEPS = 10
 
 SYSTEM_PROMPT = """你是一个在本地工作目录里执行任务的助手。

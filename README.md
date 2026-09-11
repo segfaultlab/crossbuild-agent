@@ -9,7 +9,7 @@
 
 - [x] 阶段 0：工具层 + 裸写 Tool Calling 循环
 - [x] 阶段 1：执行记录落 SQLite
-- [ ] 阶段 2：编译闭环
+- [x] 阶段 2：编译闭环
 - [ ] 阶段 3：RAG
 - [ ] 阶段 4：评测
 - [ ] 阶段 5：界面
@@ -25,6 +25,37 @@ python mini_agent.py "看看这个目录里有什么，然后告诉我 cmake 版
 
 每次运行会在 `runs.db` 落一条 run 和若干条 tool_call 记录（工具、参数、成败、
 耗时、token），用来复盘和做阶段 4 的评测统计。
+
+## 交叉编译工具链
+
+用 zig 而不是 Docker：`zig cc -target aarch64-linux-musl` 自带 musl/glibc 头文件、
+多架构 sysroot 和 lld，一条 `brew install zig` 就绪，原生速度，没有容器和 qemu 开销。
+macOS arm64 → Linux aarch64 musl 换了 OS 也换了 libc，是真交叉编译。
+
+`toolchain/` 下是 CMake toolchain 和四个 wrapper（zcc/zxx/zar/zranlib），
+准备项目时复制进 `<project>/.xbuild/`，Agent 可以读也可以改。
+
+代价要记着：zig cc 不是标准工具链，部分项目会因它的差异编不过。
+评测时这类失败必须单列一类，不能混进"交叉编译难点"里。
+
+## 阶段 2 实测
+
+| 项目 | 步数 | 结果 | 说明 |
+|---|---|---|---|
+| cJSON | 13 | 通过 | 撞上 `-std=c89 -Werror` 与 musl 冲突，自己关掉 `ENABLE_CUSTOM_COMPILER_FLAGS` 解决 |
+| fmt | 7 | 通过 | 预判问题，首次 configure 就关掉了 `FMT_PEDANTIC/FMT_WERROR` |
+| spdlog | 9 | 通过 | 只用 cmake 选项关闭示例、测试、benchmark |
+
+成功判定不看模型怎么说，由程序独立跑一次 `cmake --build` 验证。
+
+token 成本印证了步数的平方级增长：
+
+| 运行 | 步数 | 输入 token |
+|---|---|---|
+| cJSON 第一次（失败） | 18 | 159,016 |
+| cJSON 第二次（成功） | 13 | 95,568 |
+| spdlog | 9 | 35,222 |
+| fmt | 7 | 20,848 |
 
 ## 工具层的边界
 

@@ -69,6 +69,15 @@ def read_file(workdir: Path, path: str) -> str:
     return _truncate(target.read_text(errors="replace"))
 
 
+def write_file(workdir: Path, path: str, content: str) -> str:
+    target = _resolve(workdir, path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    existed = target.exists()
+    target.write_text(content)
+    action = "覆盖" if existed else "新建"
+    return f"{action} {path}，{len(content)} 字符 {len(content.splitlines())} 行"
+
+
 def run_command(workdir: Path, command: str, timeout: int = DEFAULT_TIMEOUT) -> str:
     parts = command.split()
     if not parts:
@@ -85,6 +94,8 @@ def run_command(workdir: Path, command: str, timeout: int = DEFAULT_TIMEOUT) -> 
         )
     except subprocess.TimeoutExpired:
         raise ToolError(f"命令超时（{timeout}s）被终止: {command}")
+    except FileNotFoundError:
+        raise ToolError(f"本机没有安装 {parts[0]}，换个命令")
     out = f"[exit={proc.returncode}]\n"
     if proc.stdout:
         out += f"--- stdout ---\n{proc.stdout}"
@@ -121,6 +132,21 @@ SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "write_file",
+            "description": "写入文件，会覆盖已有内容。用于修改 toolchain 文件、CMakeLists 或打补丁",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "相对于工作目录的文件路径"},
+                    "content": {"type": "string", "description": "完整的文件内容"},
+                },
+                "required": ["path", "content"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "run_command",
             "description": f"执行命令，只允许 {sorted(ALLOWED_COMMANDS)}，有超时限制",
             "parameters": {
@@ -135,4 +161,9 @@ SCHEMAS = [
     },
 ]
 
-REGISTRY = {"list_files": list_files, "read_file": read_file, "run_command": run_command}
+REGISTRY = {
+    "list_files": list_files,
+    "read_file": read_file,
+    "write_file": write_file,
+    "run_command": run_command,
+}
