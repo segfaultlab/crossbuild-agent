@@ -18,7 +18,7 @@ load_env()
 
 ROOT = Path(__file__).resolve().parent.parent
 MODEL = os.environ.get("MODEL", "deepseek-flash")
-MAX_STEPS = int(os.environ.get("MAX_STEPS", "25"))
+MAX_STEPS = int(os.environ.get("MAX_STEPS", "40"))
 REPEAT_LIMIT = 3
 USE_KB = os.environ.get("USE_KB", "0") == "1"
 

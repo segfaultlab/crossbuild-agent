@@ -1,0 +1,29 @@
+[
+  {
+    "project": "libpng",
+    "passed": true,
+    "status": "success",
+    "steps": 29,
+    "errors": {
+      "dependency_missing": 1,
+      "cmake_config_error": 2
+    },
+    "tier": "困难",
+    "note": "依赖 zlib，find_package 会失败",
+    "seconds": 91.6
+  },
+  {
+    "project": "re2",
+    "passed": true,
+    "status": "success",
+    "steps": 32,
+    "errors": {
+      "compile_error": 1,
+      "dependency_missing": 1,
+      "cmake_config_error": 1
+    },
+    "tier": "困难",
+    "note": "依赖 abseil",
+    "seconds": 154.5
+  }
+]
