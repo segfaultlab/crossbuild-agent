@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-ALLOWED_COMMANDS = {"cmake", "make", "ninja", "nm", "ldd", "file", "readelf", "git", "ls", "cat"}
+ALLOWED_COMMANDS = {"cmake", "make", "ninja", "nm", "ldd", "file", "readelf", "git", "ls"}
 DENIED_NAMES = {".env", ".netrc", ".npmrc", "id_rsa", "id_ed25519", ".git-credentials"}
 DENIED_SUFFIXES = {".key", ".pem", ".p12", ".keystore"}
 MAX_BYTES = 4000
@@ -78,12 +78,29 @@ def write_file(workdir: Path, path: str, content: str) -> str:
     return f"{action} {path}，{len(content)} 字符 {len(content.splitlines())} 行"
 
 
+def _check_paths(workdir: Path, parts: list) -> None:
+    root = str(workdir.resolve())
+    for arg in parts[1:]:
+        candidate = arg.split("=", 1)[1] if arg.startswith("-") and "=" in arg else arg
+        if arg.startswith("-") and candidate is arg:
+            continue
+        if not (candidate.startswith("/") or candidate.startswith("~")):
+            continue
+        resolved = Path(candidate).expanduser()
+        if not str(resolved.resolve()).startswith(root):
+            raise ToolError(
+                f"参数 {candidate} 指向工作目录外。主机上的库和头文件属于本机平台，"
+                f"不能用于交叉编译，别去找它们"
+            )
+
+
 def run_command(workdir: Path, command: str, timeout: int = DEFAULT_TIMEOUT) -> str:
     parts = command.split()
     if not parts:
         raise ToolError("命令为空")
     if parts[0] not in ALLOWED_COMMANDS:
         raise ToolError(f"命令 {parts[0]} 不在白名单内，允许的命令: {sorted(ALLOWED_COMMANDS)}")
+    _check_paths(workdir, parts)
     try:
         proc = subprocess.run(
             parts,
