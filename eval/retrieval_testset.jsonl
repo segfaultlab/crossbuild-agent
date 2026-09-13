@@ -1,15 +1,48 @@
-{"q": "error: 'long long' is an extension when C99 mode is not enabled [-Werror,-Wlong-long]", "gold": "k001"}
-{"q": "warning treated as error -Wpedantic cross compile aarch64", "gold": "k001"}
-{"q": "CMake Error: Could NOT find ZLIB (missing: ZLIB_LIBRARY ZLIB_INCLUDE_DIR) libpng cross compile", "gold": "k002"}
-{"q": "re2 requires absl find_package(absl REQUIRED) cross compile to aarch64 linux musl", "gold": "k002"}
-{"q": "No package 'libcurl' found pkg-config cross", "gold": "k002"}
-{"q": "/usr/bin/ld: skipping incompatible /usr/lib/libz.a when searching for -lz", "gold": "k003"}
-{"q": "file format not recognized aarch64 linking", "gold": "k003"}
-{"q": "No CMAKE_C_COMPILER could be found toolchain aarch64 linux musl", "gold": "k004"}
-{"q": "is not able to compile a simple test program zig cc", "gold": "k004"}
-{"q": "fatal error: zlib.h: No such file or directory cross compiling", "gold": "k005"}
-{"q": "fatal error: sys/epoll.h file not found musl target", "gold": "k005"}
-{"q": "怎么关掉测试和示例目标减少交叉编译失败", "gold": "k006"}
-{"q": "BUILD_TESTING examples benchmark 目标交叉编译失败", "gold": "k006"}
-{"q": "编共享库还是静态库 soname 问题 交叉编译", "gold": "k007"}
-{"q": "cannot execute binary file try_run CMAKE_CROSSCOMPILING 交叉编译时要运行目标程序", "gold": "k008"}
+{"q": "error: 'long long' is an extension when C99 mode is not enabled [-Werror,-Wlong-long]", "gold": "k001", "kind": "原始"}
+{"q": "warning treated as error -Wpedantic cross compile aarch64", "gold": "k001", "kind": "原始"}
+{"q": "CMake Error: Could NOT find ZLIB (missing: ZLIB_LIBRARY ZLIB_INCLUDE_DIR) libpng cross compile", "gold": "k002", "kind": "原始"}
+{"q": "re2 requires absl find_package(absl REQUIRED) cross compile to aarch64 linux musl", "gold": "k002", "kind": "原始"}
+{"q": "No package 'libcurl' found pkg-config cross", "gold": "k002", "kind": "原始"}
+{"q": "/usr/bin/ld: skipping incompatible /usr/lib/libz.a when searching for -lz", "gold": "k003", "kind": "原始"}
+{"q": "file format not recognized aarch64 linking", "gold": "k003", "kind": "原始"}
+{"q": "No CMAKE_C_COMPILER could be found toolchain aarch64 linux musl", "gold": "k004", "kind": "原始"}
+{"q": "is not able to compile a simple test program zig cc", "gold": "k004", "kind": "原始"}
+{"q": "fatal error: zlib.h: No such file or directory cross compiling", "gold": "k005", "kind": "原始"}
+{"q": "fatal error: sys/epoll.h file not found musl target", "gold": "k005", "kind": "原始"}
+{"q": "怎么关掉测试和示例目标减少交叉编译失败", "gold": "k006", "kind": "原始"}
+{"q": "BUILD_TESTING examples benchmark 目标交叉编译失败", "gold": "k006", "kind": "原始"}
+{"q": "编共享库还是静态库 soname 问题 交叉编译", "gold": "k007", "kind": "原始"}
+{"q": "cannot execute binary file try_run CMAKE_CROSSCOMPILING 交叉编译时要运行目标程序", "gold": "k008", "kind": "原始"}
+{"q": "CMake Error: CMake was unable to find a build program corresponding to \"Unix Makefiles\".  CMAKE_MAKE_PROGRAM is not set.  You probably need to select a different build tool.", "gold": "k011", "kind": "见过的报错"}
+{"q": "CMake Error: CMAKE_C_COMPILER not set, after EnableLanguage", "gold": ["k011", "k004"], "kind": "见过的报错"}
+{"q": "ld.lld: error: relocation R_AARCH64_ABS64 cannot be used against local symbol; recompile with -fPIC", "gold": "k012", "kind": "见过的报错"}
+{"q": "error: libpng18.so.18.0.git: unrecognized file extension", "gold": "k013", "kind": "见过的报错"}
+{"q": "re2/re2.cc:120:22: error: no matching constructor for initialization of 'absl::MutexLock'", "gold": ["k014", "k009"], "kind": "见过的报错"}
+{"q": "CMake Error: Error: generator : Ninja Does not match the generator used previously: Unix Makefiles", "gold": "k015", "kind": "见过的报错"}
+{"q": "给依赖单独建目录配置的时候提示没有设置编译器和 make 程序", "gold": "k011", "kind": "改写描述"}
+{"q": "子目录里 cmake 配置找不到交叉编译工具链文件", "gold": "k011", "kind": "改写描述"}
+{"q": "把第三方静态库链进动态库时链接器报重定位错误", "gold": "k012", "kind": "改写描述"}
+{"q": "编出来的动态库文件名末尾多了 git 字样，链接器不认", "gold": "k013", "kind": "改写描述"}
+{"q": "依赖库升级后接口变了，项目源码编译不过", "gold": "k014", "kind": "改写描述"}
+{"q": "换成 Ninja 生成器重新配置时报错说和之前的不一致", "gold": "k015", "kind": "改写描述"}
+{"q": "项目开了警告当错误，换了编译器之后一堆警告导致失败", "gold": "k001", "kind": "改写描述"}
+{"q": "交叉编译需要的 zlib 系统里没有，怎么让 CMake 找到", "gold": "k002", "kind": "改写描述"}
+{"q": "链接时混进了本机架构的库文件", "gold": "k003", "kind": "改写描述"}
+{"q": "CMake 检测编译器阶段就失败了，连简单测试程序都编不过", "gold": "k004", "kind": "改写描述"}
+{"q": "编译时提示系统头文件不存在，musl 没提供这个接口", "gold": "k005", "kind": "改写描述"}
+{"q": "只想编核心库，测试和示例目标老是出错", "gold": "k006", "kind": "改写描述"}
+{"q": "动态库的版本号和 soname 在交叉编译时总出问题，要不要只编静态库", "gold": "k007", "kind": "改写描述"}
+{"q": "配置阶段要运行编出来的程序检测特性，但目标平台程序在本机跑不了", "gold": "k008", "kind": "改写描述"}
+{"q": "依赖库源码里用了目标平台没有的系统调用", "gold": "k009", "kind": "改写描述"}
+{"q": "想直接用 Homebrew 装好的库来交叉编译行不行", "gold": "k010", "kind": "改写描述"}
+{"q": "有个库是必须的，关不掉，只能自己先编一份再让主项目用", "gold": "k002", "kind": "改写描述"}
+{"q": "/usr/bin/ld: libfoo.a(bar.o): relocation R_X86_64_32 against `.rodata' can not be used when making a shared object; recompile with -fPIC", "gold": "k012", "kind": "没见过的变体"}
+{"q": "CMake Error at CMakeLists.txt:45 (find_package): Could not find a package configuration file provided by \"absl\" with any of the following names: abslConfig.cmake absl-config.cmake", "gold": "k002", "kind": "没见过的变体"}
+{"q": "CMake Error at /usr/share/cmake/Modules/FindPkgConfig.cmake:645 (message): A required package was not found: libssl", "gold": "k002", "kind": "没见过的变体"}
+{"q": "clang: error: argument unused during compilation: '-mfpu=neon' [-Werror,-Wunused-command-line-argument]", "gold": "k001", "kind": "没见过的变体"}
+{"q": "src/os.c:12:10: fatal error: 'linux/limits.h' file not found", "gold": "k005", "kind": "没见过的变体"}
+{"q": "ld: warning: ignoring file /opt/homebrew/lib/libfoo.dylib, building for Linux-arm64 but attempting to link with file built for macOS-arm64", "gold": ["k003", "k010"], "kind": "没见过的变体"}
+{"q": "CMake Error: TRY_RUN() invoked in cross-compiling mode, please set the following cache variables appropriately: HAVE_POSIX_REGEX_EXITCODE", "gold": "k008", "kind": "没见过的变体"}
+{"q": "error: no member named 'try_lock' in 'absl::Mutex'; did you mean 'TryLock'?", "gold": ["k014", "k009"], "kind": "没见过的变体"}
+{"q": "CMake Error: Error: generator platform: ARM64 Does not match the platform used previously", "gold": "k015", "kind": "没见过的变体"}
+{"q": "CMake Error: The CMAKE_C_COMPILER: .xbuild/zcc is not a full path and was not found in the PATH.", "gold": ["k011", "k004"], "kind": "没见过的变体"}

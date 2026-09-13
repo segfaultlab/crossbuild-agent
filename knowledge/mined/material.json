@@ -1,0 +1,521 @@
+{
+ "报错片段": [
+  {
+   "signature": "Could NOT find ZLIB (missing: ZLIB_LIBRARY ZLIB_INCLUDE_DIR)",
+   "count": 17,
+   "projects": [
+    "libpng"
+   ],
+   "examples": [
+    {
+     "run": 14,
+     "project": "libpng",
+     "run_status": "success",
+     "step": 5,
+     "command": "cmake -B build -DCMAKE_TOOLCHAIN_FILE=.xbuild/zig.cmake -DPNG_TESTS=OFF -DPNG_TOOLS=OFF -DPNG_EXECUTABLES=OFF -DPNG_SHARED=ON -DPNG_STATIC=ON",
+     "errors": [
+      "Could NOT find ZLIB (missing: ZLIB_LIBRARY ZLIB_INCLUDE_DIR)"
+     ],
+     "next_actions": [
+      "[ok] cat CMakeLists.txt",
+      "[ok] cmake -E environment",
+      "[ok] ls /opt/homebrew/Cellar",
+      "[ok] ls /opt/homebrew/opt",
+      "[ok] ls -la /opt/homebrew/opt/zig/lib",
+      "[exit=1] ls /opt/homebrew/opt/zig/lib/libc",
+      "[ok] ls /opt/homebrew/opt/zig/lib/zig",
+      "[ok] ls /opt/homebrew/opt/zig/lib/zig/libc"
+     ]
+    }
+   ]
+  },
+  {
+   "signature": "CMake Error: CMake was unable to find a build program corresponding to \"Unix Makefiles\".  CMAKE_MAKE_PROGRAM is not set.  You probably need ",
+   "count": 13,
+   "projects": [
+    "libpng",
+    "re2"
+   ],
+   "examples": [
+    {
+     "run": 14,
+     "project": "libpng",
+     "run_status": "success",
+     "step": 12,
+     "command": "cmake -S build_deps/zlib -B build_deps/zlib/build -DCMAKE_TOOLCHAIN_FILE=.xbuild/zig.cmake -DCMAKE_INSTALL_PREFIX=build_deps/zlib-install -DZLIB_BUILD_EXAMPLES=OFF",
+     "errors": [
+      "CMake Error: CMake was unable to find a build program corresponding to \"Unix Makefiles\".  CMAKE_MAKE_PROGRAM is not set.  You probably need to select a different build tool.",
+      "CMake Error: CMAKE_C_COMPILER not set, after EnableLanguage"
+     ],
+     "next_actions": [
+      "[ok] cmake -S build_deps/zlib -B build_deps/zlib/build -DCMAKE_TOOLCHAIN_FILE=<repo>/workspace/libpng/.xbuild/zig.cmake -DCMAKE_INSTALL_PREFIX=build_deps/zlib-install -DZLIB_B",
+      "[exit=2] cmake --build build_deps/zlib/build -j4",
+      "[ok] cmake -E rm -rf build_deps/zlib/build",
+      "[ok] cmake -S build_deps/zlib -B build_deps/zlib/build -DCMAKE_TOOLCHAIN_FILE=<repo>/workspace/libpng/.xbuild/zig.cmake -DCMAKE_INSTALL_PREFIX=build_deps/zlib-install -DZLIB_B",
+      "[ok] cmake --build build_deps/zlib/build -j4",
+      "[ok] cmake --install build_deps/zlib/build",
+      "[ok] cmake -E rm -rf build",
+      "[ok] cmake -B build -DCMAKE_TOOLCHAIN_FILE=.xbuild/zig.cmake -DPNG_TESTS=OFF -DPNG_TOOLS=OFF -DPNG_SHARED=ON -DPNG_STATIC=ON -DZLIB_INCLUDE_DIR=<repo>/workspace/libpng/build_d"
+     ]
+    },
+    {
+     "run": 35,
+     "project": "re2",
+     "run_status": "max_steps",
+     "step": 22,
+     "command": "cmake -S third_party/abseil-cpp -B absl-build -DCMAKE_TOOLCHAIN_FILE=.xbuild/zig.cmake -DCMAKE_INSTALL_PREFIX=<repo>/workspace/re2/absl-install -DABSL_BUILD_TESTING=OFF -",
+     "errors": [
+      "CMake Error: CMake was unable to find a build program corresponding to \"Unix Makefiles\".  CMAKE_MAKE_PROGRAM is not set.  You probably need to select a different build tool.",
+      "CMake Error: CMAKE_CXX_COMPILER not set, after EnableLanguage"
+     ],
+     "next_actions": [
+      "[ok] cmake -S third_party/abseil-cpp -B absl-build -DCMAKE_TOOLCHAIN_FILE=<repo>/workspace/re2/.xbuild/zig.cmake -DCMAKE_INSTALL_PREFIX=<repo>/..",
+      "[ok] cmake --build absl-build -j4",
+      "[ok] cmake --install absl-build"
+     ]
+    }
+   ]
+  },
+  {
+   "signature": "<path>:N:N: error: no matching constructor for initialization of 'X'",
+   "count": 12,
+   "projects": [
+    "re2"
+   ],
+   "examples": [
+    {
+     "run": 51,
+     "project": "re2",
+     "run_status": "success",
+     "step": 5,
+     "command": "cmake --build build -j4",
+     "errors": [
+      "<repo>/workspace/re2/re2/dfa.cc:1733:19: error: no matching constructor for initialization of 'absl::MutexLock'"
+     ],
+     "next_actions": [
+      "[ok] read_file {\"path\": \"MODULE.bazel\"}",
+      "[ok] read_file {\"path\": \"re2/dfa.cc\", \"limit\": 40, \"offset\": 1700}",
+      "[blocked] list_files {\"path\": \"/opt/homebrew/include/absl\"}",
+      "[ok] ls -la",
+      "[ok] git submodule status",
+      "[ok] git status",
+      "[ok] cmake -E environment",
+      "[ok] ls build"
+     ]
+    }
+   ]
+  },
+  {
+   "signature": "<path>:N:N: error: 'X' is an extension when CN mode is not enabled [-Werror,-Wlong-long]",
+   "count": 8,
+   "projects": [
+    "cJSON"
+   ],
+   "examples": [
+    {
+     "run": 2,
+     "project": "cJSON",
+     "run_status": "max_steps",
+     "step": 8,
+     "command": "cmake --build build -j4",
+     "errors": [
+      "<repo>/workspace/cJSON/cJSON.c:612:9: error: 'long long' is an extension when C99 mode is not enabled [-Werror,-Wlong-long]",
+      "<repo>/workspace/cJSON/cJSON.c:612:21: error: 'long long' is an extension when C99 mode is not enabled [-Werror,-Wlong-long]"
+     ],
+     "next_actions": [
+      "[ok] git grep -n \"Werror\\|std=c89\\|CMAKE_C_STANDARD\\|ENABLE_CUSTOM_COMPILER_FLAGS\" -- CMakeLists.txt",
+      "[ok] git grep -n \"Werror\\|FLAG_SUPPORTED\\|add_compile_options\\|CMAKE_C_FLAGS\" -- CMakeLists.txt tests/CMakeLists.txt",
+      "[exit=1] git grep -n -A 100 \"cmake_minimum_required\" -- CMakeLists.txt",
+      "[ok] git grep -n \"option(\\|Werror\\|Wlong\\|COMPILER_FLAGS\" -- CMakeLists.txt",
+      "[ok] write_file .xbuild/head.cmake: 'file(READ \"${CMAKE_CURRENT_LIST_DIR}/../CMakeLists.txt\" content)\\nstring(REGEX MATCHALL \"[^\\\\n]*\" lines \"${content}\")\\nlist(LENGTH lines n)\\nset(i 1)\\nforeach(l IN L'",
+      "[exit=1] cmake -P .xbuild/head.cmake",
+      "[ok] write_file .xbuild/head.cmake: 'file(STRINGS \"${CMAKE_CURRENT_LIST_DIR}/../CMakeLists.txt\" lines)\\nset(i 1)\\nforeach(l IN LISTS lines)\\n    if(i GREATER 130)\\n        break()\\n    endif()\\n    messa'",
+      "[ok] cmake -P .xbuild/head.cmake"
+     ]
+    }
+   ]
+  },
+  {
+   "signature": "ld.lld: error: relocation R_AARCHN_ABSN cannot be used against local symbol; recompile with -fPIC",
+   "count": 3,
+   "projects": [
+    "libpng"
+   ],
+   "examples": [
+    {
+     "run": 50,
+     "project": "libpng",
+     "run_status": "success",
+     "step": 31,
+     "command": "cmake --build build-shared -j4",
+     "errors": [
+      "ld.lld: error: relocation R_AARCH64_ABS64 cannot be used against local symbol; recompile with -fPIC",
+      "ld.lld: error: relocation R_AARCH64_ABS64 cannot be used against local symbol; recompile with -fPI"
+     ],
+     "next_actions": [
+      "[ok] cmake -E rm -rf zlib/build zlib-install",
+      "[ok] cmake -B zlib/build -S zlib -DCMAKE_TOOLCHAIN_FILE=<repo>/workspace/libpng/.xbuild/zig.cmake -DCMAKE_INSTALL_PREFIX=<repo>",
+      "[ok] cmake --build zlib/build -j4 --target install",
+      "[exit=2] cmake --build build-shared -j4",
+      "[ok] git grep -n \"SOVERSION\\|set_target_properties\\|OUTPUT_NAME\\|VERSION\" CMakeLists.txt",
+      "[ok] read_file {\"path\": \"CMakeLists.txt\", \"offset\": 415, \"limit\": 65}",
+      "[ok] cmake -E rm -rf build-shared ztest",
+      "[ok] cmake -E rm -rf build"
+     ]
+    }
+   ]
+  },
+  {
+   "signature": "<path>:N:N: fatal error: 'X' file not found",
+   "count": 2,
+   "projects": [
+    "libpng"
+   ],
+   "examples": [
+    {
+     "run": 50,
+     "project": "libpng",
+     "run_status": "success",
+     "step": 9,
+     "command": "cmake --build ztest/build",
+     "errors": [
+      "<repo>/workspace/libpng/ztest/build/t.c:1:10: fatal error: 'zlib.h' file not found"
+     ],
+     "next_actions": [
+      "[exit=1] cmake -E env",
+      "[ok] write_file ztest/CMakeLists.txt: 'cmake_minimum_required(VERSION 3.14)\\nproject(ztest C)\\nexecute_process(COMMAND env OUTPUT_VARIABLE ENVOUT)\\nmessage(STATUS \"ENVDUMP:\\\\n${ENVOUT}\")\\n'",
+      "[ok] cmake -B ztest/build2 -S ztest -DCMAKE_TOOLCHAIN_FILE=<repo>/workspace/libpng/.xbuild/zig.cmake",
+      "[blocked] ls /opt/homebrew/bin/zig",
+      "[ok] git --version",
+      "[ok] git clone --depth 1 https://github.com/madler/zlib.git zlib",
+      "[ok] cmake -B zlib/build -S zlib -DCMAKE_TOOLCHAIN_FILE=<repo>/workspace/libpng/.xbuild/zig.cmake -DCMAKE_INSTALL_PREFIX=<repo>",
+      "[exit=2] cmake --build zlib/build -j4 --target install"
+     ]
+    }
+   ]
+  },
+  {
+   "signature": "error: libpngN.so.N.N.git: unrecognized file extension",
+   "count": 2,
+   "projects": [
+    "libpng"
+   ],
+   "examples": [
+    {
+     "run": 50,
+     "project": "libpng",
+     "run_status": "success",
+     "step": 35,
+     "command": "cmake --build build-shared -j4",
+     "errors": [
+      "error: libpng18.so.18.0.git: unrecognized file extension"
+     ],
+     "next_actions": [
+      "[ok] git grep -n \"SOVERSION\\|set_target_properties\\|OUTPUT_NAME\\|VERSION\" CMakeLists.txt",
+      "[ok] read_file {\"path\": \"CMakeLists.txt\", \"offset\": 415, \"limit\": 65}",
+      "[ok] cmake -E rm -rf build-shared ztest",
+      "[ok] cmake -E rm -rf build",
+      "[ok] cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=<repo>/workspace/libpng/.xbuild/zig.cmake -DZLIB_ROOT=<repo>/workspace/libpng"
+     ]
+    }
+   ]
+  },
+  {
+   "signature": "CMake Error: cmake version N.N.N",
+   "count": 1,
+   "projects": [
+    "libpng"
+   ],
+   "examples": [
+    {
+     "run": 40,
+     "project": "libpng",
+     "run_status": "success",
+     "step": 12,
+     "command": "cmake -E help",
+     "errors": [
+      "CMake Error: cmake version 4.0.2"
+     ],
+     "next_actions": [
+      "[ok] write_file peek.cmake: 'file(READ CMakeLists.txt content)\\nstring(REPLACE \"\\\\n\" \";\" lines \"${content}\")\\nset(out \"\")\\nset(i 0)\\nforeach(l ${lines})\\n  math(EXPR i \"${i}+1\")\\n  if(i GREATER 80'",
+      "[ok] cmake -P peek.cmake",
+      "[ok] read_file {\"path\": \"peek_head.txt\"}",
+      "[ok] write_file peek.cmake: 'file(READ CMakeLists.txt content)\\nstring(REPLACE \"\\\\n\" \";\" lines \"${content}\")\\nset(out \"\")\\nset(i 0)\\nforeach(l ${lines})\\n  math(EXPR i \"${i}+1\")\\n  if(i GREATER 10'",
+      "[ok] cmake -P peek.cmake",
+      "[ok] read_file {\"path\": \"peek_head.txt\"}",
+      "[ok] write_file ztest/CMakeLists.txt: 'cmake_minimum_required(VERSION 3.10)\\nproject(ztest C)\\ninclude(CheckIncludeFile)\\ncheck_include_file(zlib.h HAVE_ZLIB_H)\\nmessage(STATUS \"HAVE_ZLIB_H=${HAVE_ZLIB_H'",
+      "[exit=1] cmake -B ztest/build -S ztest -DCMAKE_TOOLCHAIN_FILE=.xbuild/zig.cmake"
+     ]
+    }
+   ]
+  },
+  {
+   "signature": "CMake Error: Error: generator : Ninja",
+   "count": 1,
+   "projects": [
+    "libpng"
+   ],
+   "examples": [
+    {
+     "run": 80,
+     "project": "libpng",
+     "run_status": "max_steps",
+     "step": 15,
+     "command": "cmake -S probe -B probe/build -G Ninja",
+     "errors": [
+      "CMake Error: Error: generator : Ninja"
+     ],
+     "next_actions": [
+      "[ok] cmake -E rm -rf probe/build",
+      "[ok] cmake -S probe -B probe/build -G Ninja",
+      "[ok] write_file probe/.xbuild/zig.cmake: 'set(CMAKE_SYSTEM_NAME Linux)\\nset(CMAKE_SYSTEM_PROCESSOR $ENV{ZIG_ARCH})\\nset(CMAKE_C_COMPILER ${CMAKE_CURRENT_LIST_DIR}/zcc)\\nset(CMAKE_CXX_COMPILER ${CMAKE_CURRE'",
+      "[ok] write_file probe/.xbuild/zcc: '#!/bin/sh\\nexec zig cc -target \"$ZIG_TARGET\" \"$@\"\\n'",
+      "[ok] write_file probe/.xbuild/zxx: '#!/bin/sh\\nexec zig c++ -target \"$ZIG_TARGET\" \"$@\"\\n'",
+      "[ok] write_file probe/.xbuild/zar: '#!/bin/sh\\nexec zig ar \"$@\"\\n'",
+      "[ok] write_file probe/.xbuild/zranlib: '#!/bin/sh\\nexec zig ranlib \"$@\"\\n'",
+      "[ok] ls -l probe/.xbuild"
+     ]
+    }
+   ]
+  },
+  {
+   "signature": "error: relocation R_AARCHN_ABSN cannot be used against local symbol; recompile with -fPIC",
+   "count": 1,
+   "projects": [
+    "libpng"
+   ],
+   "examples": [
+    {
+     "run": 140,
+     "project": "libpng",
+     "run_status": "success",
+     "step": 18,
+     "command": "cmake --build build -j4",
+     "errors": [
+      "error: relocation R_AARCH64_ABS64 cannot be used against local symbol; recompile with -fPIC",
+      "ld.lld: error: relocation R_AARCH64_ABS64 cannot be used against local symbol; recompile with -fPIC"
+     ],
+     "next_actions": [
+      "[ok] search_knowledge 'relocation R_AARCH64_ABS64 cannot be used against local symbol; recompile with -fPIC libz.a'",
+      "[ok] cmake -E rm -rf scratch/zlib/build",
+      "[ok] cmake -B scratch/zlib/build -S scratch/zlib -DCMAKE_INSTALL_PREFIX=<repo>/workspace/libpng/scratch/zlib-install -DZLIB_BUILD_SHARED=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUIL",
+      "[ok] cmake --build scratch/zlib/build -j4",
+      "[ok] cmake --install scratch/zlib/build",
+      "[ok] cmake --build build -j4",
+      "[ok] file build/libpng18.a build/libpng18.so",
+      "[blocked] readelf -h build/libpng18.so"
+     ]
+    }
+   ]
+  }
+ ],
+ "困难项目轨迹": {
+  "libpng": [
+   {
+    "run": 160,
+    "status": "success",
+    "steps": 34,
+    "actions": [
+     "[ok] ls -la",
+     "[ok] list_files {\"path\": \".xbuild\"}",
+     "[ok] cmake --version",
+     "[ok] ls .xbuild/zar",
+     "[ok] cmake -E environment",
+     "[exit=1] cmake -B build -DPNG_TESTS=OFF -DPNG_TOOLS=OFF -DPNG_SHARED=OFF -DPNG_STATIC=ON -Dld-version-script=OFF -DCMAKE_BUILD_TYPE=Release",
+     "[ok] search_knowledge 'Could NOT find ZLIB (missing: ZLIB_LIBRARY ZLIB_INCLUDE_DIR) cross compile zig'",
+     "[blocked] ls /opt/homebrew/bin",
+     "[blocked] ls /opt/homebrew/Cellar",
+     "[ok] git clone --depth 1 https://github.com/madler/zlib.git zlib-src",
+     "[ok] cmake -S zlib-src -B zlib-src/build -DCMAKE_BUILD_TYPE=Release -DZLIB_BUILD_EXAMPLES=OFF",
+     "[exit=2] cmake --build zlib-src/build -j4",
+     "[ok] cmake -B build -DPNG_TESTS=OFF -DPNG_TOOLS=ON -DPNG_SHARED=ON -DPNG_STATIC=ON -Dld-version-script=OFF -DCMAKE_BUILD_TYPE=Release -DZLIB_INCLUDE_DIR=<repo>/workspace/libpn",
+     "[exit=2] cmake --build build -j4",
+     "[ok] search_knowledge 'relocation R_AARCH64_ABS64 cannot be used against local symbol; recompile with -fPIC'",
+     "[ok] cmake -S zlib-src -B zlib-src/build -DCMAKE_BUILD_TYPE=Release -DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+     "[ok] cmake --build zlib-src/build --target zlibstatic -j4",
+     "[exit=2] cmake --build build -j4",
+     "[ok] cmake -B build -DPNG_TESTS=OFF -DPNG_TOOLS=OFF -DPNG_SHARED=ON -DPNG_STATIC=ON -Dld-version-script=OFF -DCMAKE_BUILD_TYPE=Release -DZLIB_INCLUDE_DIR=<repo>/workspace/libp",
+     "[ok] cmake --build build -j4",
+     "[ok] file build/libpng18.a build/libpng18.so.18.0.git",
+     "[ok] ls build",
+     "[ok] file build/CMakeFiles/png_static.dir/png.c.o build/CMakeFiles/png_shared.dir/png.c.o build/png-fix-itxt",
+     "[ok] nm build/libpng18.a",
+     "[ok] cmake -E rm -rf build",
+     "[ok] cmake -B build -DPNG_TESTS=OFF -DPNG_TOOLS=OFF -DPNG_SHARED=ON -DPNG_STATIC=ON -Dld-version-script=OFF -DCMAKE_BUILD_TYPE=Release -DZLIB_INCLUDE_DIR=<repo>/workspace/libp",
+     "[ok] cmake --build build -j4",
+     "[ok] cmake --build build --parallel 4",
+     "[ok] file build/libpng18.so.18.0.git build/CMakeFiles/png_static.dir/png.c.o",
+     "[blocked] readelf -h build/libpng18.so.18.0.git"
+    ]
+   },
+   {
+    "run": 150,
+    "status": "success",
+    "steps": 39,
+    "actions": [
+     "[ok] list_files {\"path\": \".\"}",
+     "[ok] cmake --version",
+     "[ok] ls .xbuild",
+     "[blocked] ls /usr/include/zlib.h",
+     "[exit=1] cmake -B build -DPNG_TESTS=ON -DPNG_TOOLS=ON -DPNG_SHARED=ON -DPNG_STATIC=ON",
+     "[ok] list_files {\"path\": \"contrib\"}",
+     "[ok] git clone --depth 1 https://github.com/madler/zlib zlib-src",
+     "[ok] cmake -S zlib-src -B zlib-build -DCMAKE_INSTALL_PREFIX=<repo>/workspace/libpng/zlib-install -DZLIB_BUILD_EXAMPLES=OFF",
+     "[exit=2] cmake --build zlib-build -j4",
+     "[ok] ls zlib-src",
+     "[ok] cmake -S zlib-src -B zlib-build -DZLIB_BUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=<repo>/workspace/libpng/zlib-install",
+     "[ok] cmake --build zlib-build -j4",
+     "[ok] cmake --install zlib-build",
+     "[ok] cmake -E rm -rf build",
+     "[ok] cmake -B build -DZLIB_ROOT=<repo>/workspace/libpng/zlib-install -DPNG_TESTS=ON -DPNG_TOOLS=ON",
+     "[exit=2] cmake --build build -j4",
+     "[ok] cmake -B build -DPNG_SHARED=OFF -DPNG_TESTS=ON -DPNG_TOOLS=ON",
+     "[ok] cmake --build build -j4",
+     "[ok] cmake -E rm -rf build",
+     "[ok] cmake -B build -DZLIB_ROOT=<repo>/workspace/libpng/zlib-install -DPNG_TESTS=OFF -DPNG_TOOLS=ON -DPNG_SHARED=ON -DPNG_STATIC=ON",
+     "[exit=2] cmake --build build -j4",
+     "[ok] cmake --build build --target help",
+     "[ok] write_file fix-subrevision.patch: 'diff --git a/CMakeLists.txt b/CMakeLists.txt\\n--- a/CMakeLists.txt\\n+++ b/CMakeLists.txt\\n@@ -20,7 +20,7 @@\\n set(PNGLIB_MINOR 8)\\n set(PNGLIB_REVISION 0)\\n #set(PNGL'",
+     "[ok] git apply fix-subrevision.patch",
+     "[ok] cmake -E rm -rf build",
+     "[ok] cmake -B build -DZLIB_ROOT=<repo>/workspace/libpng/zlib-install -DPNG_TESTS=ON -DPNG_TOOLS=ON -DPNG_SHARED=ON -DPNG_STATIC=ON",
+     "[ok] cmake --build build -j4",
+     "[ok] file build/libpng18.a build/libpng18.so.18.0.0 build/pngtest build/pngfix build/png-fix-itxt",
+     "[blocked] readelf -h build/CMakeFiles/png_static.dir/png.c.o",
+     "[ok] file build/CMakeFiles/png_static.dir/png.c.o build/CMakeFiles/png_shared.dir/png.c.o"
+    ]
+   },
+   {
+    "run": 140,
+    "status": "success",
+    "steps": 27,
+    "actions": [
+     "[ok] ls -la",
+     "[ok] ls -la .xbuild",
+     "[ok] ls -la .xbuild/logs",
+     "[blocked] ls -la /usr/local/lib /usr/local/include",
+     "[ok] ls -la contrib",
+     "[blocked] env",
+     "[exit=1] cmake -B build -DPNG_SHARED=ON -DPNG_STATIC=ON -DPNG_TESTS=OFF -DPNG_TOOLS=OFF -DPNG_HARDWARE_OPTIMIZATIONS=OFF",
+     "[ok] search_knowledge 'Could NOT find ZLIB (missing: ZLIB_LIBRARY ZLIB_INCLUDE_DIR) cross compile'",
+     "[ok] ls -la scripts",
+     "[ok] git log --oneline -5",
+     "[ok] write_file scratch/CMakeLists.txt: 'cmake_minimum_required(VERSION 3.14)\\nproject(ztest C)\\nfind_package(ZLIB)\\nmessage(STATUS \"ZLIB_FOUND=${ZLIB_FOUND}\")\\nmessage(STATUS \"ZLIB_INCLUDE_DIR=${ZLIB_INCL'",
+     "[ok] write_file scratch/main.c: '#include <zlib.h>\\n#include <stdio.h>\\nint main(void){ printf(\"%s\\\\n\", zlibVersion()); return 0; }\\n'",
+     "[ok] cmake -B scratch/build -S scratch",
+     "[exit=2] cmake --build scratch/build -j4",
+     "[ok] git clone --depth 1 https://github.com/madler/zlib.git scratch/zlib",
+     "[ok] cmake -B scratch/zlib/build -S scratch/zlib -DCMAKE_INSTALL_PREFIX=<repo>/workspace/libpng/scratch/zlib-install -DZLIB_BUILD_SHARED=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUIL",
+     "[ok] cmake --build scratch/zlib/build -j4",
+     "[ok] cmake --install scratch/zlib/build",
+     "[ok] cmake -E rm -rf build",
+     "[ok] cmake -B build -DZLIB_ROOT=<repo>/workspace/libpng/scratch/zlib-install -DPNG_SHARED=ON -DPNG_STATIC=ON -DPNG_TESTS=OFF -DPNG_TOOLS=OFF -DPNG_HARDWARE_OPTIMIZATIONS=OFF",
+     "[exit=2] cmake --build build -j4",
+     "[ok] search_knowledge 'relocation R_AARCH64_ABS64 cannot be used against local symbol; recompile with -fPIC libz.a'",
+     "[ok] cmake -E rm -rf scratch/zlib/build",
+     "[ok] cmake -B scratch/zlib/build -S scratch/zlib -DCMAKE_INSTALL_PREFIX=<repo>/workspace/libpng/scratch/zlib-install -DZLIB_BUILD_SHARED=OFF -DZLIB_BUILD_STATIC=ON -DZLIB_BUIL",
+     "[ok] cmake --build scratch/zlib/build -j4",
+     "[ok] cmake --install scratch/zlib/build",
+     "[ok] cmake --build build -j4",
+     "[ok] file build/libpng18.a build/libpng18.so",
+     "[blocked] readelf -h build/libpng18.so",
+     "[ok] file build/CMakeFiles/png_static.dir/png.c.o build/CMakeFiles/png_shared.dir/png.c.o",
+     "[ok] ls -la build/libpng18.a build/libpng18.so"
+    ]
+   }
+  ],
+  "re2": [
+   {
+    "run": 161,
+    "status": "success",
+    "steps": 19,
+    "actions": [
+     "[ok] ls -la",
+     "[ok] ls -la .xbuild",
+     "[ok] cmake --version",
+     "[ok] cmake -B build -DRE2_BUILD_TESTING=OFF -DRE2_INSTALL=ON",
+     "[ok] ls -la lib util app",
+     "[exit=2] cmake --build build -j4",
+     "[ok] ls -la lib/git",
+     "[blocked] read_file_placeholder",
+     "[ok] search_knowledge 'find_package(absl) picks up host macOS library when cross compiling, need target abseil'",
+     "[ok] git clone --depth 1 --branch 20250814.1 https://github.com/abseil/abseil-cpp.git abseil-cpp",
+     "[blocked] grep -n \"option(\" abseil-cpp/CMakeLists.txt",
+     "[ok] cmake -B build-absl -S abseil-cpp -DABSL_ENABLE_INSTALL=ON -DBUILD_TESTING=OFF -DCMAKE_INSTALL_PREFIX=<repo>/workspace/re2/absl-install -DCMAKE_BUILD_TYPE=Release",
+     "[ok] cmake --build build-absl -j4 --target install",
+     "[ok] ls absl-install/lib/cmake/absl",
+     "[ok] file absl-install/lib/libabsl_base.a",
+     "[ok] cmake -E rm -rf build",
+     "[ok] cmake -B build -DRE2_BUILD_TESTING=OFF -DRE2_INSTALL=ON -Dabsl_DIR=<repo>/workspace/re2/absl-install/lib/cmake/absl -DCMAKE_BUILD_TYPE=Release",
+     "[ok] cmake --build build -j4",
+     "[ok] file build/libre2.a build/CMakeFiles/re2.dir/re2/re2.cc.o absl-install/lib/libabsl_base.a build/CMakeFiles/re2.dir/util/rune.cc.o",
+     "[ok] ls -la build/libre2.a"
+    ]
+   },
+   {
+    "run": 151,
+    "status": "success",
+    "steps": 21,
+    "actions": [
+     "[ok] list_files {\"path\": \".xbuild\"}",
+     "[ok] ls -la .xbuild",
+     "[ok] ls -la",
+     "[blocked] readelf --version",
+     "[ok] cmake -B build -DRE2_BUILD_TESTING=OFF -DRE2_INSTALL=OFF",
+     "[exit=2] cmake --build build -j4",
+     "[blocked] grep -n \"mutex_\" re2/dfa.cc",
+     "[ok] git status",
+     "[ok] git diff --stat",
+     "[ok] git log --oneline -5",
+     "[ok] git log -1 --stat",
+     "[ok] write_file fix_mutex.patch: '--- a/re2/dfa.cc\\n+++ b/re2/dfa.cc\\n@@ -1018 +1018 @@\\n-  absl::MutexLock l(mutex_);\\n+  absl::MutexLock l(&mutex_);\\n@@ -1270 +1270 @@\\n-  absl::MutexLock l(dfa_->mu'",
+     "[exit=1] git apply --recount fix_mutex.patch",
+     "[exit=1] git apply --ignore-whitespace fix_mutex.patch",
+     "[ok] file re2/dfa.cc",
+     "[ok] git apply --unidiff-zero fix_mutex.patch",
+     "[ok] cmake --build build -j4",
+     "[ok] file build/libre2.a",
+     "[ok] file build/CMakeFiles/re2.dir/re2/dfa.cc.o",
+     "[ok] ls -la build/libre2.a"
+    ]
+   },
+   {
+    "run": 141,
+    "status": "success",
+    "steps": 25,
+    "actions": [
+     "[ok] cmake --version",
+     "[ok] list_files {\"path\": \".\"}",
+     "[ok] list_files {\"path\": \".xbuild\"}",
+     "[exit=1] cmake -E env",
+     "[ok] list_files {\"path\": \"app\"}",
+     "[ok] ls -la .xbuild",
+     "[ok] cmake -B build -DRE2_INSTALL=ON",
+     "[exit=2] cmake --build build -j4",
+     "[ok] search_knowledge \"no matching constructor for initialization of 'absl::MutexLock' no known conversion from 'absl::Mutex' to 'Mutex *'\"",
+     "[exit=128] git grep -n \"mutex_\" re2/dfa.h",
+     "[exit=1] git grep -n \"MutexLock\" re2/dfa.cc",
+     "[exit=1] git --no-pager grep -n mutex_ -- re2/dfa.h",
+     "[exit=1] git --no-pager grep -n \"absl::Mutex\" -- re2/dfa.h",
+     "[ok] git --no-pager log --oneline -3",
+     "[ok] git --no-pager show --stat 972a15c",
+     "[ok] git --no-pager show 972a15c -- re2/dfa.cc",
+     "[ok] list_files {\"path\": \"re2\"}",
+     "[exit=1] git --no-pager grep -n \"mutex_\" -- re2/prog.h",
+     "[exit=1] git --no-pager grep -n \"Mutex\" -- re2/prog.h",
+     "[exit=1] git --no-pager grep -n \"mutex_\" -- re2/dfa.cc",
+     "[exit=1] git --no-pager grep -n \"Mutex\" -- re2/dfa.cc",
+     "[ok] git --no-pager grep -n mutex",
+     "[ok] cmake -LA -N build",
+     "[ok] write_file .xbuild/fix_mutex.patch: 'diff --git a/re2/dfa.cc b/re2/dfa.cc\\n--- a/re2/dfa.cc\\n+++ b/re2/dfa.cc\\n@@ -1017,3 +1017,3 @@\\n   // even if the DFA is being run by multiple threads.\\n-  absl::Mu'",
+     "[ok] git apply -v .xbuild/fix_mutex.patch",
+     "[ok] cmake --build build -j4",
+     "[ok] file build/libre2.a",
+     "[ok] ls -la build",
+     "[ok] file build/CMakeFiles/re2.dir/re2/dfa.cc.o build/CMakeFiles/re2.dir/re2/re2.cc.o",
+     "[blocked] readelf -h build/CMakeFiles/re2.dir/re2/re2.cc.o"
+    ]
+   }
+  ]
+ }
+}

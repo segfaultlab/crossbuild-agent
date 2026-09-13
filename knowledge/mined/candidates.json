@@ -1,0 +1,100 @@
+[
+ {
+  "title": "配置子项目/第三方依赖时 CMAKE_TOOLCHAIN_FILE 要用绝对路径",
+  "patterns": [
+   "CMake was unable to find a build program corresponding to \"Unix Makefiles\".  CMAKE_MAKE_PROGRAM is not set",
+   "CMAKE_C_COMPILER not set, after EnableLanguage",
+   "CMAKE_CXX_COMPILER not set, after EnableLanguage"
+  ],
+  "cause": "用 `cmake -S <dep-src> -B <dep-build>` 配置子目录依赖时，传给 `-DCMAKE_TOOLCHAIN_FILE=.xbuild/zig.cmake` 的相对路径不再等于顶层项目目录，CMake 找不到工具链，导致 make program 和编译器未设置。",
+  "fix": "重新 configure 时把 `-DCMAKE_TOOLCHAIN_FILE` 改为绝对路径，例如 `-DCMAKE_TOOLCHAIN_FILE=$PWD/.xbuild/zig.cmake`（或顶层项目内的绝对路径）。如果依赖 build 目录已生成失败缓存，先 `cmake -E rm -rf <dep-build>` 再 configure；随后 build/install。材料 run14、run35 都是改绝对路径后依赖 build 成功。不要改 toolchain 内的编译器路径或 wrapper 逻辑。",
+  "source_runs": [
+   14,
+   35
+  ]
+ },
+ {
+  "title": "静态依赖库要用 PIC 后再链接进共享库",
+  "patterns": [
+   "ld.lld: error: relocation R_AARCH64_ABS64 cannot be used against local symbol; recompile with -fPIC",
+   "error: relocation R_AARCH64_ABS64 cannot be used against local symbol; recompile with -fPIC"
+  ],
+  "cause": "交叉编译出的第三方静态库（如 zlib 的 libz.a）默认未开 PIC，被顶层项目链接进共享库（如 libpng.so）时，aarch64 重定位失败。",
+  "fix": "不要在顶层反复 clean/build 解决。重新配置该静态依赖时加 `-DCMAKE_POSITION_INDEPENDENT_CODE=ON`；若依赖有专用静态/共享开关（如 `ZLIB_BUILD_SHARED=OFF -DZLIB_BUILD_STATIC=ON`）也一起设置。重新 build/install 依赖后，重新配置或直接 build 顶层项目。材料 run160 用 `-DCMAKE_POSITION_INDEPENDENT_CODE=ON` 重编 zlibstatic 后成功；run140 重编 zlib 后成功。",
+  "source_runs": [
+   140,
+   160
+  ]
+ },
+ {
+  "title": "版本后缀带 .git 会导致生成不可识别的目标文件扩展名",
+  "patterns": [
+   "error: libpng18.so.18.0.git: unrecognized file extension",
+   "unrecognized file extension",
+   ".so.18.0.git"
+  ],
+  "cause": "从 git checkout 构建时，项目的版本变量被填成带 `.git` 的后缀，CMake 生成 `libpng18.so.18.0.git` 这类文件名，zig/lld 按文件扩展名处理时报错。",
+  "fix": "先检查 `SOVERSION`、`set_target_properties`、`OUTPUT_NAME`、`VERSION` 和版本变量。把版本后缀固定为数字，或禁用从 VCS/git 推导版本的逻辑。材料 run150 写 `fix-subrevision.patch` 修改 CMakeLists 版本变量并 `git apply` 后，成功生成 `libpng18.so.18.0.0`。不要只反复 clean build。",
+  "source_runs": [
+   50,
+   150
+  ]
+ },
+ {
+  "title": "第三方依赖 API 漂移：固定兼容版本或 patch 调用点",
+  "patterns": [
+   "no matching constructor for initialization of 'absl::MutexLock'",
+   "no known conversion from 'absl::Mutex' to 'Mutex *'"
+  ],
+  "cause": "项目源码按旧版第三方库 API 编写，而新拉取的依赖版本改了构造函数/类型转换，导致编译失败；材料中是 re2 对 abseil `absl::MutexLock` 的用法不兼容。",
+  "fix": "优先选项目兼容的依赖版本：材料 run161 用 `git clone --depth 1 --branch 20250814.1 https://github.com/abseil/abseil-cpp.git ...`，交叉编译后用 `-Dabsl_DIR=<prefix>/lib/cmake/absl` 配置，re2 直接 build 成功。若不能换版本，按错误点 patch 项目源码（如 `absl::MutexLock l(&mutex_)`），材料 run141、run151 patch 后 build 成功。不要继续引用主机 `/opt/homebrew/include/absl` 这类路径。",
+  "source_runs": [
+   51,
+   141,
+   151,
+   161
+  ]
+ },
+ {
+  "title": "零上下文 patch 用 git apply --unidiff-zero",
+  "patterns": [
+   "git apply --recount",
+   "git apply --ignore-whitespace",
+   "git apply --unidiff-zero"
+  ],
+  "cause": "手工生成的 patch 只有 `@@ -N +N @@` 零上下文时，普通 `git apply`、`--recount`、`--ignore-whitespace` 可能因缺少上下文而失败。",
+  "fix": "对这种零上下文 patch 直接用 `git apply --unidiff-zero <patch>`。材料 run151 中 `--recount` 和 `--ignore-whitespace` 都 exit=1，`--unidiff-zero` 成功，随后 build 通过；如果 patch 有正常上下文，普通 `git apply -v` 也可（run141）。",
+  "source_runs": [
+   141,
+   151
+  ]
+ },
+ {
+  "title": "必需 find_package 依赖交叉编译后要用 <Pkg>_ROOT/_DIR/_INCLUDE_DIR 指向本地前缀",
+  "patterns": [
+   "Could NOT find ZLIB (missing: ZLIB_LIBRARY ZLIB_INCLUDE_DIR)",
+   "fatal error: 'zlib.h' file not found",
+   "find_package(absl)"
+  ],
+  "cause": "交叉编译时主机没有目标平台依赖，或 find_package 会先找到主机（macOS/Homebrew）的包；必须给 CMake 一个指向目标平台依赖的路径。",
+  "fix": "能关就先关；必需时 clone 依赖源码，用同一 zig toolchain 交叉编译并 install 到项目内 prefix，然后在顶层 configure 时显式指向该 prefix：`-DZLIB_ROOT=<prefix>` 或 `-DZLIB_INCLUDE_DIR=<prefix>/include`；CMake config 包用 `-Dabsl_DIR=<prefix>/lib/cmake/absl`。材料 run150 用 `ZLIB_ROOT`、run160 用 `ZLIB_INCLUDE_DIR`、run161 用 `absl_DIR` 后成功。不要 `ls /opt/homebrew`、`/usr/include/zlib.h` 或使用主机库。",
+  "source_runs": [
+   14,
+   140,
+   150,
+   160,
+   161
+  ]
+ },
+ {
+  "title": "重试或切换 CMake generator 前先删除 build 目录",
+  "patterns": [
+   "CMake Error: Error: generator : Ninja"
+  ],
+  "cause": "残留的 build 目录/缓存会让指定 `-G Ninja` 的 configure 失败。",
+  "fix": "先 `cmake -E rm -rf <build-dir>`，再用同样的 `cmake -S <src> -B <build> -G Ninja` 重试。材料 run80 第一次报 generator 错误，删除 `probe/build` 后同一命令成功。不要在不清理缓存的情况下反复换 generator。",
+  "source_runs": [
+   80
+  ]
+ }
+]

@@ -1,0 +1,371 @@
+{
+ "bm25": {
+  "load_s": 0.0,
+  "ms_per_query": 0.1,
+  "metrics": {
+   "原始": {
+    "n": 15,
+    "recall@1": 15,
+    "recall@3": 15,
+    "mrr": 1.0
+   },
+   "全部": {
+    "n": 48,
+    "recall@1": 43,
+    "recall@3": 47,
+    "mrr": 0.934
+   },
+   "见过的报错": {
+    "n": 6,
+    "recall@1": 6,
+    "recall@3": 6,
+    "mrr": 1.0
+   },
+   "改写描述": {
+    "n": 17,
+    "recall@1": 13,
+    "recall@3": 16,
+    "mrr": 0.853
+   },
+   "没见过的变体": {
+    "n": 10,
+    "recall@1": 9,
+    "recall@3": 10,
+    "mrr": 0.933
+   }
+  },
+  "misses": [
+   {
+    "kind": "改写描述",
+    "q": "交叉编译需要的 zlib 系统里没有，怎么让 CMake 找到",
+    "gold": [
+     "k002"
+    ],
+    "got": [
+     "k009",
+     "k002",
+     "k005"
+    ]
+   },
+   {
+    "kind": "改写描述",
+    "q": "CMake 检测编译器阶段就失败了，连简单测试程序都编不过",
+    "gold": [
+     "k004"
+    ],
+    "got": [
+     "k006",
+     "k008",
+     "k003"
+    ]
+   },
+   {
+    "kind": "改写描述",
+    "q": "想直接用 Homebrew 装好的库来交叉编译行不行",
+    "gold": [
+     "k010"
+    ],
+    "got": [
+     "k008",
+     "k010",
+     "k004"
+    ]
+   },
+   {
+    "kind": "改写描述",
+    "q": "有个库是必须的，关不掉，只能自己先编一份再让主项目用",
+    "gold": [
+     "k002"
+    ],
+    "got": [
+     "k001",
+     "k002",
+     "k009"
+    ]
+   },
+   {
+    "kind": "没见过的变体",
+    "q": "ld: warning: ignoring file /opt/homebrew/lib/libfoo.dylib, b",
+    "gold": [
+     "k003",
+     "k010"
+    ],
+    "got": [
+     "k014",
+     "k002",
+     "k010"
+    ]
+   }
+  ]
+ },
+ "dense": {
+  "load_s": 6.2,
+  "ms_per_query": 43.9,
+  "metrics": {
+   "原始": {
+    "n": 15,
+    "recall@1": 12,
+    "recall@3": 15,
+    "mrr": 0.889
+   },
+   "全部": {
+    "n": 48,
+    "recall@1": 41,
+    "recall@3": 47,
+    "mrr": 0.913
+   },
+   "见过的报错": {
+    "n": 6,
+    "recall@1": 5,
+    "recall@3": 6,
+    "mrr": 0.917
+   },
+   "改写描述": {
+    "n": 17,
+    "recall@1": 16,
+    "recall@3": 16,
+    "mrr": 0.941
+   },
+   "没见过的变体": {
+    "n": 10,
+    "recall@1": 8,
+    "recall@3": 10,
+    "mrr": 0.9
+   }
+  },
+  "misses": [
+   {
+    "kind": "原始",
+    "q": "re2 requires absl find_package(absl REQUIRED) cross compile ",
+    "gold": [
+     "k002"
+    ],
+    "got": [
+     "k014",
+     "k002",
+     "k009"
+    ]
+   },
+   {
+    "kind": "原始",
+    "q": "/usr/bin/ld: skipping incompatible /usr/lib/libz.a when sear",
+    "gold": [
+     "k003"
+    ],
+    "got": [
+     "k002",
+     "k013",
+     "k003"
+    ]
+   },
+   {
+    "kind": "原始",
+    "q": "fatal error: zlib.h: No such file or directory cross compili",
+    "gold": [
+     "k005"
+    ],
+    "got": [
+     "k002",
+     "k005",
+     "k001"
+    ]
+   },
+   {
+    "kind": "见过的报错",
+    "q": "CMake Error: CMake was unable to find a build program corres",
+    "gold": [
+     "k011"
+    ],
+    "got": [
+     "k004",
+     "k011",
+     "k003"
+    ]
+   },
+   {
+    "kind": "改写描述",
+    "q": "有个库是必须的，关不掉，只能自己先编一份再让主项目用",
+    "gold": [
+     "k002"
+    ],
+    "got": [
+     "k007",
+     "k010",
+     "k009"
+    ]
+   },
+   {
+    "kind": "没见过的变体",
+    "q": "CMake Error at CMakeLists.txt:45 (find_package): Could not f",
+    "gold": [
+     "k002"
+    ],
+    "got": [
+     "k004",
+     "k002",
+     "k009"
+    ]
+   },
+   {
+    "kind": "没见过的变体",
+    "q": "CMake Error: Error: generator platform: ARM64 Does not match",
+    "gold": [
+     "k015"
+    ],
+    "got": [
+     "k004",
+     "k015",
+     "k009"
+    ]
+   }
+  ]
+ },
+ "hybrid": {
+  "load_s": 3.5,
+  "ms_per_query": 33.2,
+  "metrics": {
+   "原始": {
+    "n": 15,
+    "recall@1": 15,
+    "recall@3": 15,
+    "mrr": 1.0
+   },
+   "全部": {
+    "n": 48,
+    "recall@1": 45,
+    "recall@3": 47,
+    "mrr": 0.958
+   },
+   "见过的报错": {
+    "n": 6,
+    "recall@1": 6,
+    "recall@3": 6,
+    "mrr": 1.0
+   },
+   "改写描述": {
+    "n": 17,
+    "recall@1": 14,
+    "recall@3": 16,
+    "mrr": 0.882
+   },
+   "没见过的变体": {
+    "n": 10,
+    "recall@1": 10,
+    "recall@3": 10,
+    "mrr": 1.0
+   }
+  },
+  "misses": [
+   {
+    "kind": "改写描述",
+    "q": "交叉编译需要的 zlib 系统里没有，怎么让 CMake 找到",
+    "gold": [
+     "k002"
+    ],
+    "got": [
+     "k009",
+     "k002",
+     "k004"
+    ]
+   },
+   {
+    "kind": "改写描述",
+    "q": "CMake 检测编译器阶段就失败了，连简单测试程序都编不过",
+    "gold": [
+     "k004"
+    ],
+    "got": [
+     "k008",
+     "k004",
+     "k006"
+    ]
+   },
+   {
+    "kind": "改写描述",
+    "q": "有个库是必须的，关不掉，只能自己先编一份再让主项目用",
+    "gold": [
+     "k002"
+    ],
+    "got": [
+     "k001",
+     "k010",
+     "k009"
+    ]
+   }
+  ]
+ },
+ "hybrid_rerank": {
+  "load_s": 7.6,
+  "ms_per_query": 1125.7,
+  "metrics": {
+   "原始": {
+    "n": 15,
+    "recall@1": 15,
+    "recall@3": 15,
+    "mrr": 1.0
+   },
+   "全部": {
+    "n": 48,
+    "recall@1": 45,
+    "recall@3": 47,
+    "mrr": 0.951
+   },
+   "见过的报错": {
+    "n": 6,
+    "recall@1": 6,
+    "recall@3": 6,
+    "mrr": 1.0
+   },
+   "改写描述": {
+    "n": 17,
+    "recall@1": 15,
+    "recall@3": 17,
+    "mrr": 0.922
+   },
+   "没见过的变体": {
+    "n": 10,
+    "recall@1": 9,
+    "recall@3": 9,
+    "mrr": 0.9
+   }
+  },
+  "misses": [
+   {
+    "kind": "改写描述",
+    "q": "编出来的动态库文件名末尾多了 git 字样，链接器不认",
+    "gold": [
+     "k013"
+    ],
+    "got": [
+     "k007",
+     "k010",
+     "k013"
+    ]
+   },
+   {
+    "kind": "改写描述",
+    "q": "有个库是必须的，关不掉，只能自己先编一份再让主项目用",
+    "gold": [
+     "k002"
+    ],
+    "got": [
+     "k009",
+     "k010",
+     "k002"
+    ]
+   },
+   {
+    "kind": "没见过的变体",
+    "q": "CMake Error: Error: generator platform: ARM64 Does not match",
+    "gold": [
+     "k015"
+    ],
+    "got": [
+     "k009",
+     "k008",
+     "k003"
+    ]
+   }
+  ]
+ }
+}
