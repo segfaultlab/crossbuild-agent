@@ -124,6 +124,22 @@ class Verify(TmpDir):
         passed, _ = build_agent.verify(project, "aarch64")
         self.assertFalse(passed)
 
+    def test_build_dir_other_than_build_is_found_and_dependency_dirs_ignored(self):
+        (self.repo / "build").mkdir()
+        (self.repo / "build" / "script.sh").write_text("echo not a cmake dir\n")
+        (self.repo / "dep").mkdir()
+        (self.repo / "dep" / "CMakeLists.txt").write_text("cmake_minimum_required(VERSION 3.20)\nproject(dep C)\n")
+        (self.repo / "CMakeLists.txt").write_text(
+            "cmake_minimum_required(VERSION 3.20)\nproject(lib C)\nadd_library(foo STATIC foo.c)\n")
+        (self.repo / "foo.c").write_text("int foo(void) { return 1; }\n")
+        project = build_agent.prepare(str(self.repo), self.tmp / "workspace")
+        env = {**os.environ, "CMAKE_TOOLCHAIN_FILE": str(project / ".xbuild" / "zig.cmake")}
+        subprocess.run(["cmake", "-B", "out"], cwd=project, env=env, check=True, capture_output=True)
+        subprocess.run(["cmake", "-S", "dep", "-B", "dep-build"], cwd=project, env=env, check=True, capture_output=True)
+        self.assertEqual(build_agent.find_build_dir(project), (project / "out").resolve())
+        passed, log = build_agent.verify(project, "aarch64")
+        self.assertTrue(passed, log)
+
     def test_wrong_architecture_fails(self):
         project = self.configure(
             "cmake_minimum_required(VERSION 3.20)\nproject(lib C)\nadd_library(foo STATIC foo.c)\n")
@@ -174,17 +190,18 @@ class AgentLoop(TmpDir):
         script.append(tool_msg(3, "write_file", {"path": "missing.txt", "content": "now here"}))
         script.append(tool_msg(4, "run_command", bad))
 
-        saved = (build_agent.OpenAI, build_agent.Trace, build_agent.ROOT)
+        saved = (build_agent.OpenAI, build_agent.Trace, build_agent.ROOT, build_agent.WORKSPACE)
         workspace_root = self.tmp / "root"
         shutil.copytree(ROOT / "toolchain", workspace_root / "toolchain")
         build_agent.OpenAI = lambda **kw: FakeClient(script)
         build_agent.Trace = FakeTrace
         build_agent.ROOT = workspace_root
+        build_agent.WORKSPACE = workspace_root / "workspace"
         os.environ.setdefault("DEEPSEEK_API_KEY", "test")
         try:
             events = list(build_agent.build_events(str(self.repo), "aarch64-linux-musl", "aarch64"))
         finally:
-            build_agent.OpenAI, build_agent.Trace, build_agent.ROOT = saved
+            build_agent.OpenAI, build_agent.Trace, build_agent.ROOT, build_agent.WORKSPACE = saved
 
         runs = [c for c in FakeTrace.calls if c[0] == "run_command"]
         self.assertEqual([ok for _, ok, _ in runs], [False, False, False, True])

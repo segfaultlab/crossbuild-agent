@@ -14,8 +14,8 @@ TARGET = "aarch64-linux-musl"
 ARCH = "aarch64"
 
 
-def main(only_tier=None, tag="baseline"):
-    projects = json.loads((ROOT / "eval" / "projects.json").read_text())
+def main(only_tier=None, tag="baseline", projects_file="projects.json"):
+    projects = json.loads((ROOT / "eval" / projects_file).read_text())
     if only_tier:
         projects = [p for p in projects if p["tier"] == only_tier]
 
@@ -31,9 +31,13 @@ def main(only_tier=None, tag="baseline"):
                  "steps": 0, "errors": {}}
             print(f"崩溃: {type(e).__name__}: {e}")
         r.update(tier=p["tier"], note=p["note"], seconds=round(time.time() - t0, 1),
-                 model=build_agent.MODEL, use_kb=build_agent.USE_KB, max_steps=build_agent.MAX_STEPS)
+                 model=build_agent.MODEL, use_kb=build_agent.USE_KB, max_steps=build_agent.MAX_STEPS,
+                 kb_mode=build_agent.KB_MODE if build_agent.USE_KB else None, impl=build_agent.AGENT_IMPL)
         results.append(r)
-        shutil.rmtree(ROOT / "workspace" / p["name"], ignore_errors=True)
+        if r["status"].startswith("crash"):
+            print(f"保留工作目录以便续跑: {build_agent.WORKSPACE / p['name']}")
+        else:
+            shutil.rmtree(build_agent.WORKSPACE / p["name"], ignore_errors=True)
 
     out = ROOT / "eval" / f"result_{tag}.json"
     out.write_text(json.dumps(results, ensure_ascii=False, indent=2))
@@ -64,4 +68,4 @@ def report(results, tag, elapsed):
 if __name__ == "__main__":
     tier = sys.argv[1] if len(sys.argv) > 1 and sys.argv[1] != "all" else None
     tag = sys.argv[2] if len(sys.argv) > 2 else "baseline"
-    main(tier, tag)
+    main(tier, tag, sys.argv[3] if len(sys.argv) > 3 else "projects.json")

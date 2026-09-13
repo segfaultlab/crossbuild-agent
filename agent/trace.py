@@ -36,7 +36,7 @@ class Trace:
     def __init__(self, db_path):
         self.path = Path(db_path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(self.path)
+        self.conn = sqlite3.connect(self.path, check_same_thread=False)
         self.conn.executescript(SCHEMA)
         self.conn.commit()
         self.run_id = None

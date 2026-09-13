@@ -11,7 +11,7 @@ from pathlib import Path
 from openai import OpenAI
 
 import errors
-from knowledge import Knowledge
+import knowledge
 from mini_agent import load_env
 from tools import REGISTRY, SCHEMAS, ToolError
 from trace import Trace
@@ -19,11 +19,15 @@ from trace import Trace
 load_env()
 
 ROOT = Path(__file__).resolve().parent.parent
+WORKSPACE = Path(os.environ.get("WORKSPACE", ROOT / "workspace"))
 MODEL = os.environ.get("MODEL", "deepseek-flash")
 MAX_STEPS = int(os.environ.get("MAX_STEPS", "40"))
 REPEAT_LIMIT = 3
 ELF_MACHINES = {"aarch64": 183, "x86_64": 62, "arm": 40, "riscv64": 243, "x86": 3, "i386": 3}
 USE_KB = os.environ.get("USE_KB", "0") == "1"
+KB_MODE = os.environ.get("KB_MODE", "bm25")
+AGENT_IMPL = os.environ.get("AGENT_IMPL", "handwritten")
+ERROR_PREFIXES = ("工具失败：", "参数错误：", "未预期的错误：", "错误：")
 
 KB_SCHEMA = {
     "type": "function",
@@ -42,7 +46,7 @@ KB_SCHEMA = {
     },
 }
 
-_kb = Knowledge() if USE_KB else None
+_kb = knowledge.load(KB_MODE) if USE_KB else None
 
 
 def search_knowledge(workdir, query):
@@ -86,8 +90,9 @@ SYSTEM_PROMPT = """你的任务是把一个 C/C++ 项目交叉编译到目标平
   自己的严格检查选项
 - 同一个办法失败两次就换思路，不要重复
 - 每次 configure 或 build 失败后，先用 search_knowledge 查经验库再动手改
-- 成功的判据：cmake --build build 返回 exit=0，并且 build 目录里产出了目标架构的
-  库、可执行文件或目标文件。没用 toolchain 编出来的主机产物不算
+- 成功的判据：对项目根目录配置出的构建目录执行 cmake --build 返回 exit=0，并且那个目录里产出了
+  目标架构的库、可执行文件或目标文件。没用 toolchain 编出来的主机产物不算。构建目录默认用 build，
+  项目里已经有同名源码目录时换一个名字即可
 
 完成后用一句话说明结果；失败就说清楚卡在哪一类问题上。"""
 
@@ -104,6 +109,21 @@ def call_tool(workdir, name, args):
         return f"参数错误：{e}"
     except Exception as e:
         return f"未预期的错误：{type(e).__name__}: {e}"
+
+
+def check_and_run(project, name, args, seen):
+    key = name + json.dumps(args, sort_keys=True)
+    seen[key] = seen.get(key, 0) + 1
+    if seen[key] > REPEAT_LIMIT:
+        return f"这个调用已经重复 {seen[key]} 次且没有进展，换个思路", False
+    result = call_tool(project, name, args)
+    ok = not result.startswith(ERROR_PREFIXES)
+    if name == "run_command" and not result.startswith("[exit=0]"):
+        ok = False
+    if name == "write_file" and ok:
+        for k in [k for k in seen if k.startswith("run_command")]:
+            del seen[k]
+    return result, ok
 
 
 def prepare(source, workspace):
@@ -189,15 +209,30 @@ def scan_artifacts(build_dir, arch):
     return hits, foreign
 
 
+def find_build_dir(project):
+    root = project.resolve()
+    found = []
+    for cache in root.glob("**/CMakeCache.txt"):
+        if len(cache.relative_to(root).parts) > 4:
+            continue
+        m = re.search(r"^CMAKE_HOME_DIRECTORY:INTERNAL=(.*)$", cache.read_text(errors="replace"), re.M)
+        if m and Path(m.group(1)).resolve() == root:
+            found.append(cache)
+    if not found:
+        return project / "build"
+    return max(found, key=lambda c: c.stat().st_mtime).parent
+
+
 def verify(project, arch):
+    build_dir = find_build_dir(project)
     r = subprocess.run(
-        ["cmake", "--build", "build", "-j4"],
+        ["cmake", "--build", str(build_dir), "-j4"],
         cwd=project, capture_output=True, text=True, timeout=600,
     )
     log = (r.stdout + r.stderr)[-3000:]
     if r.returncode != 0:
         return False, log
-    hits, foreign = scan_artifacts(project / "build", arch)
+    hits, foreign = scan_artifacts(build_dir, arch)
     if foreign:
         return False, log + f"\n[验收] 有 {len(foreign)} 个产物不是 {arch} 架构，例如 {foreign[0]}"
     if not hits:
@@ -208,7 +243,7 @@ def verify(project, arch):
 def build_events(source, target, arch):
     os.environ["ZIG_TARGET"] = target
     os.environ["ZIG_ARCH"] = arch
-    project = prepare(source, ROOT / "workspace")
+    project = prepare(source, WORKSPACE)
     os.environ["CMAKE_TOOLCHAIN_FILE"] = str(project / ".xbuild" / "zig.cmake")
     commit = commit_of(project)
 
@@ -254,19 +289,8 @@ def build_events(source, target, arch):
                     result = f"参数不是合法 JSON: {tc.function.arguments}"
                     ok = False
                 else:
-                    key = tc.function.name + json.dumps(args, sort_keys=True)
-                    seen[key] = seen.get(key, 0) + 1
                     yield {"type": "tool_call", "step": step, "tool": tc.function.name, "args": args}
-                    if seen[key] > REPEAT_LIMIT:
-                        result = f"这个调用已经重复 {seen[key]} 次且没有进展，换个思路"
-                        ok = False
-                    else:
-                        result = call_tool(project, tc.function.name, args)
-                        ok = not result.startswith(("工具失败：", "参数错误：", "未预期的错误：", "错误："))
-                        if tc.function.name == "run_command" and not result.startswith("[exit=0]"):
-                            ok = False
-                        if tc.function.name == "write_file" and ok:
-                            seen = {k: v for k, v in seen.items() if not k.startswith("run_command")}
+                    result, ok = check_and_run(project, tc.function.name, args, seen)
 
                 elapsed = (time.perf_counter() - started) * 1000
                 tracer.tool_call(step, tc.function.name, args, ok, result, elapsed)
@@ -296,12 +320,16 @@ def build_events(source, target, arch):
            "commit": commit, "log": log[-3000:]}
 
 
-def build(source, target, arch):
+def build(source, target, arch, events=None):
+    if events is None and AGENT_IMPL == "langgraph":
+        import graph_agent
+        events = graph_agent.build_events(source, target, arch)
     summary = None
-    for ev in build_events(source, target, arch):
+    for ev in events or build_events(source, target, arch):
         kind = ev["type"]
         if kind == "run_started":
-            print(f"项目: {ev['project']}   目标: {ev['target']}   知识库: {'开' if ev['use_kb'] else '关'}")
+            print(f"项目: {ev['project']}   目标: {ev['target']}   知识库: {'开' if ev['use_kb'] else '关'}"
+                  f"   实现: {ev.get('impl', 'handwritten')}")
             print("=" * 64)
         elif kind == "message":
             print(f"\n[{ev['step']}] 模型: {ev['content'][:200]}")
