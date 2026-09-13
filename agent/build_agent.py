@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -21,6 +22,7 @@ ROOT = Path(__file__).resolve().parent.parent
 MODEL = os.environ.get("MODEL", "deepseek-flash")
 MAX_STEPS = int(os.environ.get("MAX_STEPS", "40"))
 REPEAT_LIMIT = 3
+ELF_MACHINES = {"aarch64": 183, "x86_64": 62, "arm": 40, "riscv64": 243, "x86": 3, "i386": 3}
 USE_KB = os.environ.get("USE_KB", "0") == "1"
 
 KB_SCHEMA = {
@@ -57,11 +59,13 @@ SYSTEM_PROMPT = """你的任务是把一个 C/C++ 项目交叉编译到目标平
 环境：
 - 工作目录就是项目根目录，你只能在里面操作
 - CMake toolchain 文件在 .xbuild/zig.cmake，用 zig cc 做交叉编译
+- 环境变量 CMAKE_TOOLCHAIN_FILE 已经指向它的绝对路径，任何 cmake configure（包括给依赖单独建的
+  子目录）都会自动使用，不需要再传 -DCMAKE_TOOLCHAIN_FILE
 - 目标平台由环境变量决定，已经配置好，不要改 toolchain 里的编译器路径
 
 标准流程：
 1. 先看项目结构和 CMakeLists.txt，了解构建选项
-2. cmake -B build -DCMAKE_TOOLCHAIN_FILE=.xbuild/zig.cmake [其他选项]
+2. cmake -B build [其他选项]
 3. cmake --build build -j4
 4. 失败就读报错，判断原因，调整 cmake 选项或打补丁，重来
 
@@ -75,13 +79,15 @@ SYSTEM_PROMPT = """你的任务是把一个 C/C++ 项目交叉编译到目标平
 
 要点：
 - 优先通过 cmake 选项解决，尽量不改项目源码
-- 关掉测试、示例、共享库这类非必需目标可以减少麻烦
+- 关掉测试、示例、共享库这类非必需目标可以减少麻烦，但不能把所有编译目标都关掉；
+  header-only 项目至少保留一个会被编译的测试或示例
 - 报错提到某个编译警告被 -Werror 变成错误时，通常是语言标准或警告选项和
   工具链不匹配，试 -DCMAKE_C_STANDARD / -DCMAKE_CXX_STANDARD，或关掉该项目
   自己的严格检查选项
 - 同一个办法失败两次就换思路，不要重复
 - 每次 configure 或 build 失败后，先用 search_knowledge 查经验库再动手改
-- 成功的判据是 cmake --build 返回 exit=0
+- 成功的判据：cmake --build build 返回 exit=0，并且 build 目录里产出了目标架构的
+  库、可执行文件或目标文件。没用 toolchain 编出来的主机产物不算
 
 完成后用一句话说明结果；失败就说清楚卡在哪一类问题上。"""
 
@@ -102,8 +108,11 @@ def call_tool(workdir, name, args):
 
 def prepare(source, workspace):
     workspace.mkdir(parents=True, exist_ok=True)
+    workspace = workspace.resolve()
     name = source.rstrip("/").split("/")[-1].replace(".git", "")
-    project = workspace / name
+    project = (workspace / name).resolve()
+    if not name or project.parent != workspace:
+        raise ValueError(f"无法从 {source} 得到合法的项目目录名")
     if project.exists():
         shutil.rmtree(project)
     if source.startswith(("http://", "https://", "git@")):
@@ -134,18 +143,74 @@ def survey(project):
     return "\n".join(lines)
 
 
-def verify(project):
+def commit_of(project):
+    if not (project / ".git").exists():
+        return None
+    r = subprocess.run(["git", "rev-parse", "HEAD"], cwd=project, capture_output=True, text=True)
+    return r.stdout.strip() or None
+
+
+def elf_machines(path):
+    with open(path, "rb") as f:
+        head = f.read(20)
+        if head[:4] == b"\x7fELF" and len(head) == 20:
+            return [int.from_bytes(head[18:20], "little" if head[5] == 1 else "big")]
+        if head[:8] != b"!<arch>\n":
+            return []
+        data = head + f.read()
+    found, pos = [], 8
+    while pos + 60 <= len(data):
+        size = int(data[pos + 48:pos + 58].strip() or 0)
+        member = data[pos + 60:pos + 80]
+        if member[:4] == b"\x7fELF" and len(member) == 20:
+            found.append(int.from_bytes(member[18:20], "little" if member[5] == 1 else "big"))
+        pos += 60 + size + size % 2
+    return found
+
+
+def scan_artifacts(build_dir, arch):
+    want = ELF_MACHINES.get(arch)
+    hits, foreign = [], []
+    for p in build_dir.rglob("*"):
+        if p.is_symlink() or not p.is_file():
+            continue
+        parts = p.relative_to(build_dir).parts
+        if any(a == "CMakeFiles" and (re.fullmatch(r"\d+\.\d+.*", b) or b in ("CMakeScratch", "CMakeTmp"))
+               for a, b in zip(parts, parts[1:])):
+            continue
+        machines = elf_machines(p)
+        if not machines:
+            continue
+        rel = str(p.relative_to(build_dir))
+        if want is None or all(m == want for m in machines):
+            hits.append(rel)
+        else:
+            foreign.append(rel)
+    return hits, foreign
+
+
+def verify(project, arch):
     r = subprocess.run(
         ["cmake", "--build", "build", "-j4"],
         cwd=project, capture_output=True, text=True, timeout=600,
     )
-    return r.returncode == 0, (r.stdout + r.stderr)[-3000:]
+    log = (r.stdout + r.stderr)[-3000:]
+    if r.returncode != 0:
+        return False, log
+    hits, foreign = scan_artifacts(project / "build", arch)
+    if foreign:
+        return False, log + f"\n[验收] 有 {len(foreign)} 个产物不是 {arch} 架构，例如 {foreign[0]}"
+    if not hits:
+        return False, log + f"\n[验收] build 目录里没有 {arch} 架构的 ELF 产物，等于什么都没交叉编译"
+    return True, log + f"\n[验收] 找到 {len(hits)} 个 {arch} 架构产物，例如 {hits[0]}"
 
 
 def build_events(source, target, arch):
     os.environ["ZIG_TARGET"] = target
     os.environ["ZIG_ARCH"] = arch
     project = prepare(source, ROOT / "workspace")
+    os.environ["CMAKE_TOOLCHAIN_FILE"] = str(project / ".xbuild" / "zig.cmake")
+    commit = commit_of(project)
 
     client = OpenAI(api_key=os.environ["DEEPSEEK_API_KEY"], base_url="https://api.deepseek.com")
     tracer = Trace(ROOT / "runs.db")
@@ -154,7 +219,8 @@ def build_events(source, target, arch):
     schemas = tool_set()[0]
     survey_text = survey(project)
     yield {"type": "run_started", "run_id": run_id, "project": project.name, "target": target,
-           "model": MODEL, "use_kb": USE_KB, "max_steps": MAX_STEPS, "survey": survey_text}
+           "model": MODEL, "use_kb": USE_KB, "max_steps": MAX_STEPS, "commit": commit,
+           "survey": survey_text}
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -186,17 +252,23 @@ def build_events(source, target, arch):
                 except json.JSONDecodeError:
                     args = {}
                     result = f"参数不是合法 JSON: {tc.function.arguments}"
+                    ok = False
                 else:
                     key = tc.function.name + json.dumps(args, sort_keys=True)
                     seen[key] = seen.get(key, 0) + 1
                     yield {"type": "tool_call", "step": step, "tool": tc.function.name, "args": args}
                     if seen[key] > REPEAT_LIMIT:
                         result = f"这个调用已经重复 {seen[key]} 次且没有进展，换个思路"
+                        ok = False
                     else:
                         result = call_tool(project, tc.function.name, args)
+                        ok = not result.startswith(("工具失败：", "参数错误：", "未预期的错误：", "错误："))
+                        if tc.function.name == "run_command" and not result.startswith("[exit=0]"):
+                            ok = False
+                        if tc.function.name == "write_file" and ok:
+                            seen = {k: v for k, v in seen.items() if not k.startswith("run_command")}
 
                 elapsed = (time.perf_counter() - started) * 1000
-                ok = not result.startswith(("工具失败：", "参数错误：", "未预期的错误：", "错误："))
                 tracer.tool_call(step, tc.function.name, args, ok, result, elapsed)
 
                 kinds = errors.classify(result)
@@ -215,13 +287,13 @@ def build_events(source, target, arch):
         raise
 
     yield {"type": "verifying"}
-    passed, log = verify(project)
+    passed, log = verify(project, arch)
     status = "success" if passed else ("failed" if status == "agent_done" else status)
     tracer.finish(status, step, log[-1000:])
 
     yield {"type": "finished", "run_id": run_id, "project": project.name, "passed": passed,
            "status": status, "steps": step, "errors": dict(Counter(seen_errors)),
-           "log": log[-3000:]}
+           "commit": commit, "log": log[-3000:]}
 
 
 def build(source, target, arch):
@@ -258,7 +330,8 @@ def build(source, target, arch):
                     print("   ", line[:120])
 
     return {"project": summary["project"], "passed": summary["passed"],
-            "status": summary["status"], "steps": summary["steps"], "errors": summary["errors"]}
+            "status": summary["status"], "steps": summary["steps"], "errors": summary["errors"],
+            "commit": summary["commit"]}
 
 
 if __name__ == "__main__":

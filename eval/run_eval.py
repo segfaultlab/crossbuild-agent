@@ -30,7 +30,8 @@ def main(only_tier=None, tag="baseline"):
             r = {"project": p["name"], "passed": False, "status": f"crash:{type(e).__name__}",
                  "steps": 0, "errors": {}}
             print(f"崩溃: {type(e).__name__}: {e}")
-        r.update(tier=p["tier"], note=p["note"], seconds=round(time.time() - t0, 1))
+        r.update(tier=p["tier"], note=p["note"], seconds=round(time.time() - t0, 1),
+                 model=build_agent.MODEL, use_kb=build_agent.USE_KB, max_steps=build_agent.MAX_STEPS)
         results.append(r)
         shutil.rmtree(ROOT / "workspace" / p["name"], ignore_errors=True)
 

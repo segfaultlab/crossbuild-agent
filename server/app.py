@@ -37,7 +37,7 @@ def check_source(source):
         raise HTTPException(400, f"不是 git 地址，本地也找不到这个路径: {source}")
 
 
-def stream(source, target, arch):
+def start_build(source, target, arch):
     q = queue.Queue()
 
     def worker():
@@ -47,17 +47,19 @@ def stream(source, target, arch):
         except Exception as e:
             q.put({"type": "error", "message": f"{type(e).__name__}: {e}"})
         finally:
+            running.release()
             q.put(None)
 
     threading.Thread(target=worker, daemon=True).start()
-    try:
-        while True:
-            ev = q.get()
-            if ev is None:
-                break
-            yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
-    finally:
-        running.release()
+    return q
+
+
+def stream(q):
+    while True:
+        ev = q.get()
+        if ev is None:
+            break
+        yield f"data: {json.dumps(ev, ensure_ascii=False)}\n\n"
 
 
 @app.get("/api/build")
@@ -65,8 +67,13 @@ def api_build(source: str, target: str = "aarch64-linux-musl", arch: str = ""):
     check_source(source)
     if not running.acquire(blocking=False):
         raise HTTPException(409, "已经有一个构建在跑，等它结束再来")
+    try:
+        q = start_build(source, target, arch or target.split("-")[0])
+    except Exception:
+        running.release()
+        raise
     return StreamingResponse(
-        stream(source, target, arch or target.split("-")[0]),
+        stream(q),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
