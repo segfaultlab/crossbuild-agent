@@ -16,15 +16,23 @@
 - [x] 阶段 3：知识库 10 条 + BM25 检索
 - [x] 阶段 4：评测（三轮 A/B + 检索侧单独评测）
 - [x] 阶段 5：FastAPI + SSE + Vue 界面
+- [x] 阶段 6：知识库从运行记录提炼扩到 15 条，bge-m3 + Milvus Lite 向量检索，与 BM25 混合
+- [x] 阶段 7：用 LangGraph 重写同一个循环，支持断点续跑，和手写版对比评测
+- [x] 阶段 8：工具包成 MCP server
 
 ## 跑起来
 
 前置：Python 3.10+、[zig](https://ziglang.org)（`brew install zig`）、cmake、Node 18+。
 
 ```bash
-pip install -r requirements.txt
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
 cp .env.example .env      # 填 DEEPSEEK_API_KEY，.env 已被 gitignore
 ```
+
+下面的 `python` 都指 `.venv/bin/python`。向量检索要用 bge-m3 和 bge-reranker-v2-m3 两个模型（各约 2.2GB）。
+默认从 HuggingFace 下载；网络慢可以先从 ModelScope 下到本地目录，再用环境变量
+`EMBED_MODEL`、`RERANK_MODEL` 指向本地路径。
 
 ### 命令行
 
@@ -34,7 +42,21 @@ USE_KB=1 python build_agent.py https://github.com/DaveGamble/cJSON
 ```
 
 第二、三个参数是目标三元组和架构，默认 `aarch64-linux-musl aarch64`。
-`MAX_STEPS` 控制步数上限，默认 40。
+
+| 环境变量 | 作用 | 默认 |
+|---|---|---|
+| `MAX_STEPS` | 步数上限 | 40 |
+| `USE_KB` | 设为 1 时给模型加上 `search_knowledge` 工具 | 0 |
+| `KB_MODE` | 检索方式：`bm25` / `dense` / `hybrid` / `hybrid_rerank` | `bm25` |
+| `AGENT_IMPL` | 评测和 `build()` 用哪种实现：`handwritten` / `langgraph` | `handwritten` |
+| `WORKSPACE` | 项目克隆到哪个目录，并行跑多组评测时各用各的 | `workspace/` |
+
+LangGraph 版本可以单独跑，中途崩溃（比如 API 报错）后能从检查点接着跑：
+
+```bash
+python graph_agent.py https://github.com/DaveGamble/cJSON
+python graph_agent.py --resume run-208
+```
 
 ### 网页
 
@@ -56,32 +78,61 @@ cd web && npm install && npm run dev
 界面两块：**跑一次**（填仓库地址，SSE 实时看每一步工具调用、报错分类、最终结果）、
 **历史运行**（`runs.db` 里的全部 run，点开看完整 Trace）。
 
+### MCP server
+
+把工具层包成 MCP server，别的 Agent（比如 Claude Code）也能用同一套带边界检查的工具：
+
+```bash
+python agent/mcp_server.py --workdir <项目目录> --kb bm25
+```
+
+启动时会把 toolchain 复制进 `<项目目录>/.xbuild/`，并设置好目标平台和 `CMAKE_TOOLCHAIN_FILE`。
+提供 `list_files`、`read_file`、`write_file`、`run_command`、`search_knowledge` 五个工具，
+工具说明直接复用 `tools.SCHEMAS`。被拦下的调用返回 `is_error=True` 和具体原因。
+接入 Claude Code：
+
+```bash
+claude mcp add crossbuild -- <仓库路径>/.venv/bin/python <仓库路径>/agent/mcp_server.py --workdir <项目目录>
+```
+
 ### 评测
 
 ```bash
 cd eval
-python run_eval.py all baseline      # 跑完 10 个项目，结果写 result_baseline.json
-python compare.py baseline rag       # 两轮对比
+python run_eval.py all baseline                          # 10 个项目，结果写 result_baseline.json
+python run_eval.py all ho_baseline projects_holdout.json # 留出集 5 个项目
+python compare.py baseline rag                           # 两轮对比
+python retrieval_eval.py                                 # 四种检索方式在 48 条查询上的对比
 ```
 
-### 回归测试
+知识库条目的提炼脚本是 `knowledge/mine_runs.py`：从 `runs.db` 抽出报错片段和困难项目轨迹，
+让模型写候选条目到 `knowledge/mined/candidates.json`，人工审过再合进 `entries.jsonl`。
+
+### 测试
 
 ```bash
-python -m unittest tests/test_regressions.py
+python -m unittest discover tests
 ```
 
-覆盖路径越界、退出码被截断、`read_file` 分页、误删目录、产物验收、Trace 的 ok 标记、
-重复调用计数、后端构建锁。验收那几条需要本机有 zig 和 cmake，不调用模型。
+都不调用模型：
+
+- `test_regressions.py`：路径越界、退出码被截断、`read_file` 分页、误删目录、产物验收、Trace 的 ok 标记、
+  重复调用计数、后端构建锁。验收那几条需要本机有 zig 和 cmake
+- `test_graph_agent.py`：LangGraph 版本的护栏和手写版一致、崩溃后续跑不重复已完成的步骤、步数上限
+- `test_knowledge.py`：Milvus Lite 里已有的 collection 在新进程里能直接检索（用假 embedding 模型）
+- `test_mcp.py`：进程内和 stdio 两种方式连 MCP server，检查工具列表和边界
 
 ## 目录
 
 ```
-agent/      Agent 主体：build_agent.py 是编译闭环，tools.py 是工具层，
-            knowledge.py 是 BM25 检索，trace.py 落库，errors.py 做报错分类
+agent/      Agent 主体：build_agent.py 是手写的编译闭环，graph_agent.py 是 LangGraph 版本，
+            tools.py 是工具层，knowledge.py 是检索（BM25 / 向量 / 混合 / 重排），
+            mcp_server.py 是 MCP server，trace.py 落库，errors.py 做报错分类
 server/     FastAPI：/api/build 走 SSE，/api/runs 读历史
 web/        Vite + Vue 3 界面
 eval/       评测集、跑批脚本、对比脚本、报告
-knowledge/  经验库条目（jsonl）
+knowledge/  经验库条目（jsonl）、从运行记录提炼条目的脚本
+tests/      回归测试
 toolchain/  CMake toolchain 和 zcc/zxx/zar/zranlib 四个 wrapper
 ```
 
@@ -135,15 +186,30 @@ rag2 那轮 libpng 的运行里，模型写了一个 `probe/CMakeLists.txt`，�
   出现 8 次，之后（v3）是 0。用满 40 步（3 次→0）和失败（1 次→0）方向一致，但样本少，只能算趋势
 - `read_file` 改成翻页后，第一版里"写 CMake 脚本分段读文件"的绕路（6 次运行、15 次）不再出现
 
-知识库**仍然没能证明有效**：开和不开，步数的差异方向不一致，30 次运行只调用了 13 次检索。
-检索本身没问题（15 条人工标注，Recall@1 14/15、Recall@3 15/15），问题在模型不主动调。
+### 检索和知识库
+
+知识库从运行记录提炼扩到 15 条。48 条查询上四种检索方式的 Recall@1：BM25 43、向量（bge-m3）41、
+**混合 45**、混合加重排 45（但每条查询慢 30 多倍）。向量检索擅长改写过的中文描述，BM25 擅长带报错原文的查询，
+混合把两边合起来了。
+
+但放到 Agent 里测，知识库**仍然没能证明有效**。换了 5 个 Agent 没见过的项目，不开知识库、BM25、混合各跑 3 轮，
+全部 15/15 通过，平均步数 14.2、15.7、16.8，差异在噪声范围内。30 次运行只调用了 8 次检索，
+查得最多的 libarchive 链接错误在库里根本没有对应经验。**瓶颈是知识库覆盖，不是检索算法。**
+
+### LangGraph 对比
+
+同配置各 3 轮，手写版 30/30、LangGraph 版 29/29 有效运行全部通过，步数和 token 基本一样。
+LangGraph 版代码多一倍，多出来的是检查点：实测跑到第 12 步 `kill -9`，`--resume` 从第 13 步接着跑，
+第 18 步编译通过，已完成的工具调用没有重复执行。
 
 第一版（旧验收标准，每配置 1 轮）的 90%→100%→80% 和当时的分析也保留在报告里。
 
 ## 已知局限
 
-- 评测集只有 10 个项目，新标准下两个配置 60 次全部通过，通过率已经没有区分度，只能比步数和 token
+- 评测集 10 个项目加留出集 5 个项目，新标准下全部通过，通过率已经没有区分度，只能比步数和 token
+- 知识库只有 15 条，留出集里真正遇到的问题（比如 libarchive 的可选依赖链接错误）大多没有覆盖
 - 每个配置只跑 3 轮，困难档步数的标准差有 5 到 8 步，小幅差异分不清是改动还是随机
 - 检索靠模型主动调用，调用率始终上不去，应该改成失败后自动前置
+- MCP server 和 Agent 用的是同一套工具检查，同样不是安全沙箱
 - 后端一次只跑一个构建（`os.environ` 里的目标三元组是全局的），第二个请求返回 409
 - 只在 macOS arm64 → aarch64-linux-musl 这一条路径上验证过

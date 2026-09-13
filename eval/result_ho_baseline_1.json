@@ -1,0 +1,90 @@
+[
+  {
+    "project": "libuv",
+    "passed": true,
+    "status": "success",
+    "steps": 16,
+    "errors": {},
+    "commit": "096a02d14cb9d3de6d55a29ec02c4dfcb7643c7f",
+    "tier": "留出",
+    "note": "平台相关代码多",
+    "seconds": 37.2,
+    "model": "deepseek-flash",
+    "use_kb": false,
+    "max_steps": 40,
+    "kb_mode": null,
+    "impl": "handwritten"
+  },
+  {
+    "project": "curl",
+    "passed": true,
+    "status": "success",
+    "steps": 13,
+    "errors": {
+      "dependency_missing": 3,
+      "cmake_config_error": 2,
+      "link_error": 1
+    },
+    "commit": "0b04700029149d740f50b7925dd162aa270e3908",
+    "tier": "留出",
+    "note": "默认要 TLS 和 libpsl 等依赖",
+    "seconds": 100.1,
+    "model": "deepseek-flash",
+    "use_kb": false,
+    "max_steps": 40,
+    "kb_mode": null,
+    "impl": "handwritten"
+  },
+  {
+    "project": "libjpeg-turbo",
+    "passed": true,
+    "status": "success",
+    "steps": 9,
+    "errors": {},
+    "commit": "7b5fee3f7a83b5c2bdbb52d5dd6ce6bfc53b6b58",
+    "tier": "留出",
+    "note": "带 SIMD 汇编",
+    "seconds": 69.2,
+    "model": "deepseek-flash",
+    "use_kb": false,
+    "max_steps": 40,
+    "kb_mode": null,
+    "impl": "handwritten"
+  },
+  {
+    "project": "freetype",
+    "passed": true,
+    "status": "success",
+    "steps": 9,
+    "errors": {},
+    "commit": "5c79d6cd1ac73d70a55f3d963fb568aa32f6d794",
+    "tier": "留出",
+    "note": "可选依赖 zlib/png/harfbuzz",
+    "seconds": 22.4,
+    "model": "deepseek-flash",
+    "use_kb": false,
+    "max_steps": 40,
+    "kb_mode": null,
+    "impl": "handwritten"
+  },
+  {
+    "project": "libarchive",
+    "passed": true,
+    "status": "success",
+    "steps": 28,
+    "errors": {
+      "link_error": 1,
+      "cmake_config_error": 1,
+      "header_missing": 1
+    },
+    "commit": "a4ba070a01e967f7b98998c654dcc082e16fe58c",
+    "tier": "留出",
+    "note": "可选依赖多",
+    "seconds": 278.6,
+    "model": "deepseek-flash",
+    "use_kb": false,
+    "max_steps": 40,
+    "kb_mode": null,
+    "impl": "handwritten"
+  }
+]

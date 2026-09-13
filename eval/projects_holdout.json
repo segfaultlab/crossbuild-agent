@@ -1,0 +1,7 @@
+[
+  {"name": "libuv",         "url": "https://github.com/libuv/libuv.git",                 "tier": "留出", "note": "平台相关代码多"},
+  {"name": "curl",          "url": "https://github.com/curl/curl.git",                   "tier": "留出", "note": "默认要 TLS 和 libpsl 等依赖"},
+  {"name": "libjpeg-turbo", "url": "https://github.com/libjpeg-turbo/libjpeg-turbo.git", "tier": "留出", "note": "带 SIMD 汇编"},
+  {"name": "freetype",      "url": "https://github.com/freetype/freetype.git",           "tier": "留出", "note": "可选依赖 zlib/png/harfbuzz"},
+  {"name": "libarchive",    "url": "https://github.com/libarchive/libarchive.git",       "tier": "留出", "note": "可选依赖多"}
+]
