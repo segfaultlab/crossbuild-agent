@@ -6,7 +6,7 @@
 成功不由模型自述，由程序在循环结束后独立跑一次 `cmake --build`，并检查 build 目录里
 确实有目标架构的 ELF 产物（库、可执行文件或目标文件），才判定通过。
 
-完整计划见 `../../docs/crossbuild-agent-plan.md`，评测报告见 `eval/REPORT.md`。
+评测报告见 [`eval/REPORT.md`](eval/REPORT.md)，里面有每一轮的数字、失败分析和踩过的坑。
 
 ## 进度
 
@@ -55,7 +55,7 @@ LangGraph 版本可以单独跑，中途崩溃（比如 API 报错）后能从�
 
 ```bash
 python graph_agent.py https://github.com/DaveGamble/cJSON
-python graph_agent.py --resume run-208
+python graph_agent.py --resume run-<运行编号>
 ```
 
 ### 网页

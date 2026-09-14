@@ -1,0 +1,11 @@
+.env
+.venv/
+__pycache__/
+.DS_Store
+runs.db
+checkpoints.db
+knowledge/milvus.db
+workspace/
+workspace-*/
+web/node_modules/
+web/dist/
