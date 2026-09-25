@@ -1,5 +1,9 @@
 # CrossBuild Agent
 
+[![tests](https://github.com/segfaultlab/crossbuild-agent/actions/workflows/tests.yml/badge.svg)](https://github.com/segfaultlab/crossbuild-agent/actions/workflows/tests.yml)
+![python](https://img.shields.io/badge/python-3.10%2B-blue)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 给它一个开源 C/C++ 项目，它自己完成交叉编译：读构建系统、尝试 configure 和 build、
 读报错、查经验库、改配置、重试，直到编译通过或者说清楚卡在哪一类问题上。
 
@@ -7,6 +11,25 @@
 确实有目标架构的 ELF 产物（库、可执行文件或目标文件），才判定通过。
 
 评测报告见 [`eval/REPORT.md`](eval/REPORT.md)，里面有每一轮的数字、失败分析和踩过的坑。
+
+```mermaid
+flowchart LR
+    A[仓库地址] --> B[读构建系统]
+    B --> C[configure / build]
+    C -- 报错 --> D[报错分类]
+    D --> E[查经验库]
+    E --> F[改配置]
+    F --> C
+    C -- 模型说通过了 --> G{程序独立验收<br/>cmake --build<br/>+ ELF 架构检查}
+    G -- 没通过 --> H[判为失败]
+    G -- 有目标架构产物 --> I[通过]
+```
+
+**几个数字**（详见下文“评测结果”）：
+
+- 10 个开源项目、三档难度，每个配置 3 轮，新验收标准下全部通过；换 5 个 Agent 没见过的项目，15/15 通过
+- 混合检索（BM25 + bge-m3）在 48 条查询上 Recall@1 为 45
+- LangGraph 版跑到第 12 步 `kill -9`，`--resume` 从第 13 步接着跑，已完成的工具调用不重复执行
 
 ## 进度
 
@@ -114,7 +137,7 @@ python retrieval_eval.py                                 # 四种检索方式在
 python -m unittest discover tests
 ```
 
-都不调用模型：
+每次推送由 GitHub Actions 在 Linux x86_64 上跑一遍（zig 用 PyPI 的 `ziglang` 包，不装 torch）。都不调用模型：
 
 - `test_regressions.py`：路径越界、退出码被截断、`read_file` 分页、误删目录、产物验收、Trace 的 ok 标记、
   重复调用计数、后端构建锁。验收那几条需要本机有 zig 和 cmake
@@ -212,4 +235,5 @@ LangGraph 版代码多一倍，多出来的是检查点：实测跑到第 12 步
 - 检索靠模型主动调用，调用率始终上不去，应该改成失败后自动前置
 - MCP server 和 Agent 用的是同一套工具检查，同样不是安全沙箱
 - 后端一次只跑一个构建（`os.environ` 里的目标三元组是全局的），第二个请求返回 409
-- 只在 macOS arm64 → aarch64-linux-musl 这一条路径上验证过
+- Agent 端到端只在 macOS arm64 → aarch64-linux-musl 这一条路径上验证过；
+  CI 在 Linux x86_64 上跑的是回归测试（含一次真实的交叉编译验收），不是完整的 Agent 评测
