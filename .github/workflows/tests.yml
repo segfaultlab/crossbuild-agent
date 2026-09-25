@@ -1,0 +1,36 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      # sentence-transformers 会拉几个 GB 的 torch，测试里嵌入模型是假的，用不上
+      - name: Install dependencies
+        run: |
+          grep -v sentence-transformers requirements.txt > "$RUNNER_TEMP/requirements.txt"
+          pip install -r "$RUNNER_TEMP/requirements.txt" numpy ziglang==0.16.0
+
+      # 验收测试要真的交叉编译一次，zig 用 PyPI 上的 ziglang 包提供
+      - name: Put zig on PATH
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          printf '#!/bin/sh\nexec python -m ziglang "$@"\n' > "$RUNNER_TEMP/bin/zig"
+          chmod +x "$RUNNER_TEMP/bin/zig"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Run tests
+        run: |
+          zig version
+          cmake --version | head -1
+          python -m unittest discover tests -v
