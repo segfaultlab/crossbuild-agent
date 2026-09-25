@@ -26,6 +26,8 @@ REPEAT_LIMIT = 3
 ELF_MACHINES = {"aarch64": 183, "x86_64": 62, "arm": 40, "riscv64": 243, "x86": 3, "i386": 3}
 USE_KB = os.environ.get("USE_KB", "0") == "1"
 KB_MODE = os.environ.get("KB_MODE", "bm25")
+KB_AUTO = os.environ.get("KB_AUTO", "0") == "1"
+AUTO_KB_TOPK = 2
 AGENT_IMPL = os.environ.get("AGENT_IMPL", "handwritten")
 ERROR_PREFIXES = ("工具失败：", "参数错误：", "未预期的错误：", "错误：")
 
@@ -46,11 +48,28 @@ KB_SCHEMA = {
     },
 }
 
-_kb = knowledge.load(KB_MODE) if USE_KB else None
+_kb = knowledge.load(KB_MODE) if USE_KB or KB_AUTO else None
 
 
 def search_knowledge(workdir, query):
     return _kb.format(_kb.search(query, topk=3))
+
+
+def auto_knowledge(name, ok, result, injected):
+    """命令失败且认得出报错类型时，拿报错原文查经验库，返回 (查询, 条目 id, 要附在结果后面的文字)。
+
+    不依赖模型主动调用 search_knowledge：评测里 30 次运行只查了 8 次，经验常常没送到模型面前。
+    injected 记录本次运行已经附过的条目，同一条不重复附。
+    """
+    if not KB_AUTO or _kb is None or name != "run_command" or ok or not errors.classify(result):
+        return None
+    query = "\n".join(errors.extract_details(result, 5)) or result[-1500:]
+    hits = [(score, e) for score, e in _kb.search(query, topk=AUTO_KB_TOPK) if e["id"] not in injected]
+    if not hits:
+        return None
+    ids = [e["id"] for _, e in hits]
+    injected.extend(ids)
+    return query, ids, "[经验库自动匹配] 按这次报错查到的经验，对症就照做，不对症就忽略：\n\n" + _kb.format(hits)
 
 
 def tool_set():
@@ -95,6 +114,13 @@ SYSTEM_PROMPT = """你的任务是把一个 C/C++ 项目交叉编译到目标平
   项目里已经有同名源码目录时换一个名字即可
 
 完成后用一句话说明结果；失败就说清楚卡在哪一类问题上。"""
+
+if KB_AUTO:
+    SYSTEM_PROMPT = SYSTEM_PROMPT.replace(
+        "- 每次 configure 或 build 失败后，先用 search_knowledge 查经验库再动手改",
+        "- configure 或 build 失败时，结果末尾可能附有「[经验库自动匹配]」，先看它再动手改"
+        + ("；没附上或不对症，可以用 search_knowledge 换个说法再查" if USE_KB else ""),
+    )
 
 
 def call_tool(workdir, name, args):
@@ -254,7 +280,7 @@ def build_events(source, target, arch):
     schemas = tool_set()[0]
     survey_text = survey(project)
     yield {"type": "run_started", "run_id": run_id, "project": project.name, "target": target,
-           "model": MODEL, "use_kb": USE_KB, "max_steps": MAX_STEPS, "commit": commit,
+           "model": MODEL, "use_kb": USE_KB, "kb_auto": KB_AUTO, "max_steps": MAX_STEPS, "commit": commit,
            "survey": survey_text}
 
     messages = [
@@ -263,6 +289,7 @@ def build_events(source, target, arch):
     ]
     seen = {}
     seen_errors = []
+    kb_injected = []
     status = "max_steps"
     step = 0
 
@@ -301,6 +328,13 @@ def build_events(source, target, arch):
                        "result": result[:4000], "ms": round(elapsed), "errors": kinds,
                        "details": errors.extract_details(result, 2) if kinds else []}
 
+                auto = auto_knowledge(tc.function.name, ok, result, kb_injected)
+                if auto:
+                    query, ids, note = auto
+                    result = f"{result}\n\n{note}"
+                    tracer.tool_call(step, "auto_knowledge", {"query": query[:500]}, True, note, 0)
+                    yield {"type": "kb_inject", "step": step, "ids": ids, "content": note}
+
                 messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
 
             if all(c > REPEAT_LIMIT for c in seen.values()) and len(seen) > 2:
@@ -317,7 +351,7 @@ def build_events(source, target, arch):
 
     yield {"type": "finished", "run_id": run_id, "project": project.name, "passed": passed,
            "status": status, "steps": step, "errors": dict(Counter(seen_errors)),
-           "commit": commit, "log": log[-3000:]}
+           "kb_injected": kb_injected, "commit": commit, "log": log[-3000:]}
 
 
 def build(source, target, arch, events=None):
@@ -329,7 +363,7 @@ def build(source, target, arch, events=None):
         kind = ev["type"]
         if kind == "run_started":
             print(f"项目: {ev['project']}   目标: {ev['target']}   知识库: {'开' if ev['use_kb'] else '关'}"
-                  f"   实现: {ev.get('impl', 'handwritten')}")
+                  f"   自动附上: {'开' if ev.get('kb_auto') else '关'}   实现: {ev.get('impl', 'handwritten')}")
             print("=" * 64)
         elif kind == "message":
             print(f"\n[{ev['step']}] 模型: {ev['content'][:200]}")
@@ -345,6 +379,8 @@ def build(source, target, arch, events=None):
             else:
                 first = ev["result"].splitlines()[0][:110] if ev["result"] else ""
                 print(f"  -> [{ev['ms']}ms] {first}")
+        elif kind == "kb_inject":
+            print(f"  -> 自动附上经验：{', '.join(ev['ids'])}")
         elif kind == "verifying":
             print("\n" + "=" * 64)
         elif kind == "finished":
@@ -359,7 +395,7 @@ def build(source, target, arch, events=None):
 
     return {"project": summary["project"], "passed": summary["passed"],
             "status": summary["status"], "steps": summary["steps"], "errors": summary["errors"],
-            "commit": summary["commit"]}
+            "kb_injected": summary.get("kb_injected", []), "commit": summary["commit"]}
 
 
 if __name__ == "__main__":

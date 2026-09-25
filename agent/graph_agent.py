@@ -31,6 +31,7 @@ class State(TypedDict):
     seen: dict
     errors: list
     status: str
+    kb_injected: list
     passed: bool
     log: str
 
@@ -60,6 +61,7 @@ def build_graph(model, tracer, checkpointer=None):
         write = get_stream_writer()
         project, step = Path(state["project"]), state["step"]
         seen, found, replies = dict(state["seen"]), list(state["errors"]), []
+        injected = list(state.get("kb_injected") or [])
         last = state["messages"][-1]
         calls = [(tc["id"], tc["name"], tc["args"], None) for tc in last.tool_calls]
         calls += [(tc["id"], tc["name"], {}, f"参数不是合法 JSON: {tc['args']}") for tc in last.invalid_tool_calls]
@@ -77,8 +79,14 @@ def build_graph(model, tracer, checkpointer=None):
             write({"type": "tool_result", "step": step, "tool": name, "ok": ok, "result": result[:4000],
                    "ms": round(elapsed), "errors": kinds,
                    "details": errors.extract_details(result, 2) if kinds else []})
+            auto = core.auto_knowledge(name, ok, result, injected)
+            if auto:
+                query, ids, note = auto
+                result = f"{result}\n\n{note}"
+                tracer.tool_call(step, "auto_knowledge", {"query": query[:500]}, True, note, 0)
+                write({"type": "kb_inject", "step": step, "ids": ids, "content": note})
             replies.append(ToolMessage(result, tool_call_id=call_id))
-        update = {"messages": replies, "seen": seen, "errors": found}
+        update = {"messages": replies, "seen": seen, "errors": found, "kb_injected": injected}
         if all(c > core.REPEAT_LIMIT for c in seen.values()) and len(seen) > 2:
             update["status"] = "stuck"
         return update
@@ -136,7 +144,7 @@ def build_events(source, target, arch, resume=None, model=None, tracer=None, che
             "messages": [SystemMessage(core.SYSTEM_PROMPT),
                          HumanMessage(f"把这个项目交叉编译到 {target}。\n\n{core.survey(project)}")],
             "project": str(project), "target": target, "arch": arch, "run_id": run_id,
-            "step": 0, "seen": {}, "errors": [], "status": "", "passed": False, "log": "",
+            "step": 0, "seen": {}, "errors": [], "status": "", "kb_injected": [], "passed": False, "log": "",
         }
 
     os.environ["ZIG_TARGET"] = target
@@ -146,8 +154,8 @@ def build_events(source, target, arch, resume=None, model=None, tracer=None, che
     thread_id = config["configurable"]["thread_id"]
 
     yield {"type": "run_started", "run_id": tracer.run_id, "project": project.name, "target": target,
-           "model": core.MODEL, "use_kb": core.USE_KB, "max_steps": core.MAX_STEPS, "commit": commit,
-           "impl": "langgraph", "thread_id": thread_id, "resumed": bool(resume),
+           "model": core.MODEL, "use_kb": core.USE_KB, "kb_auto": core.KB_AUTO, "max_steps": core.MAX_STEPS,
+           "commit": commit, "impl": "langgraph", "thread_id": thread_id, "resumed": bool(resume),
            "survey": core.survey(project)}
     try:
         for chunk in graph.stream(inputs, config, stream_mode="custom"):
@@ -162,7 +170,7 @@ def build_events(source, target, arch, resume=None, model=None, tracer=None, che
     tracer.finish(final["status"], final["step"], final["log"][-1000:])
     yield {"type": "finished", "run_id": tracer.run_id, "project": project.name, "passed": final["passed"],
            "status": final["status"], "steps": final["step"], "errors": dict(Counter(final["errors"])),
-           "commit": commit, "impl": "langgraph", "thread_id": thread_id, "log": final["log"][-3000:]}
+           "kb_injected": final.get("kb_injected") or [], "commit": commit, "impl": "langgraph", "thread_id": thread_id, "log": final["log"][-3000:]}
 
 
 if __name__ == "__main__":

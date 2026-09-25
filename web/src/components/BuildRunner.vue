@@ -43,6 +43,8 @@ function start() {
     } else if (ev.type === 'tool_result') {
       const slot = items.value.find((i) => i.kind === 'tool' && i.tool === ev.tool && !i.done)
       if (slot) Object.assign(slot, { done: true, ok: ev.ok, ms: ev.ms, result: ev.result, errors: ev.errors, details: ev.details })
+    } else if (ev.type === 'kb_inject') {
+      items.value.push({ kind: 'kb', step: ev.step, ids: ev.ids, content: ev.content })
     } else if (ev.type === 'verifying') {
       verifying.value = true
     } else if (ev.type === 'finished') {
@@ -80,6 +82,7 @@ function short(args) {
 
     <p v-if="meta" class="meta">
       {{ meta.project }} → {{ meta.target }} · 模型 {{ meta.model }} · 知识库{{ meta.use_kb ? '开' : '关' }} ·
+      自动附上{{ meta.kb_auto ? '开' : '关' }} ·
       步数上限 {{ meta.max_steps }} · run #{{ meta.run_id }}
       <span v-if="items.length">· 工具耗时合计 {{ (elapsed / 1000).toFixed(1) }}s</span>
     </p>
@@ -90,6 +93,14 @@ function short(args) {
       <span class="step">{{ it.step }}</span>
 
       <div v-if="it.kind === 'message'" class="say">{{ it.content }}</div>
+
+      <div v-else-if="it.kind === 'kb'" class="tool">
+        <div class="head" @click="open[idx] = !open[idx]">
+          <b>经验库自动附上</b>
+          <span class="args mono">{{ it.ids.join(' ') }}</span>
+        </div>
+        <pre v-if="open[idx]" class="out">{{ it.content }}</pre>
+      </div>
 
       <div v-else class="tool">
         <div class="head" @click="open[idx] = !open[idx]">
