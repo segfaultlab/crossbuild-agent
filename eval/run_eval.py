@@ -28,11 +28,12 @@ def main(only_tier=None, tag="baseline", projects_file="projects.json"):
             r = build_agent.build(p["url"], TARGET, ARCH)
         except Exception as e:
             r = {"project": p["name"], "passed": False, "status": f"crash:{type(e).__name__}",
-                 "steps": 0, "errors": {}}
+                 "steps": 0, "errors": {}, "kb_injected": []}
             print(f"崩溃: {type(e).__name__}: {e}")
         r.update(tier=p["tier"], note=p["note"], seconds=round(time.time() - t0, 1),
                  model=build_agent.MODEL, use_kb=build_agent.USE_KB, max_steps=build_agent.MAX_STEPS,
-                 kb_mode=build_agent.KB_MODE if build_agent.USE_KB else None, impl=build_agent.AGENT_IMPL)
+                 kb_mode=build_agent.KB_MODE if build_agent.USE_KB or build_agent.KB_AUTO else None,
+                 kb_auto=build_agent.KB_AUTO, impl=build_agent.AGENT_IMPL)
         results.append(r)
         if r["status"].startswith("crash"):
             print(f"保留工作目录以便续跑: {build_agent.WORKSPACE / p['name']}")
@@ -63,6 +64,10 @@ def report(results, tag, elapsed):
     if all_errs:
         print(f"报错分布：{dict(all_errs)}")
     print(f"平均步数：{sum(r['steps'] for r in results) / n:.1f}")
+    injected = [i for r in results for i in r.get("kb_injected", [])]
+    if any(r.get("kb_auto") for r in results):
+        print(f"自动附上经验：{len(injected)} 条，涉及 {sum(1 for r in results if r.get('kb_injected'))} 个项目，"
+              f"分布 {dict(Counter(injected))}")
 
 
 if __name__ == "__main__":

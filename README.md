@@ -42,6 +42,7 @@ flowchart LR
 - [x] 阶段 6：知识库从运行记录提炼扩到 15 条，bge-m3 + Milvus Lite 向量检索，与 BM25 混合
 - [x] 阶段 7：用 LangGraph 重写同一个循环，支持断点续跑，和手写版对比评测
 - [x] 阶段 8：工具包成 MCP server
+- [ ] 阶段 9：命令失败后自动附上经验库条目（`KB_AUTO=1`），代码和测试已完成，评测待跑
 
 ## 跑起来
 
@@ -71,6 +72,7 @@ USE_KB=1 python build_agent.py https://github.com/DaveGamble/cJSON
 | `MAX_STEPS` | 步数上限 | 40 |
 | `USE_KB` | 设为 1 时给模型加上 `search_knowledge` 工具 | 0 |
 | `KB_MODE` | 检索方式：`bm25` / `dense` / `hybrid` / `hybrid_rerank` | `bm25` |
+| `KB_AUTO` | 设为 1 时，`run_command` 失败且认得出报错类型，就用报错原文查经验库，把本次运行还没给过的最多 2 条附在结果后面。可以和 `USE_KB` 单独组合 | 0 |
 | `AGENT_IMPL` | 评测和 `build()` 用哪种实现：`handwritten` / `langgraph` | `handwritten` |
 | `WORKSPACE` | 项目克隆到哪个目录，并行跑多组评测时各用各的 | `workspace/` |
 
@@ -126,6 +128,11 @@ python run_eval.py all baseline                          # 10 个项目，结果
 python run_eval.py all ho_baseline projects_holdout.json # 留出集 5 个项目
 python compare.py baseline rag                           # 两轮对比
 python retrieval_eval.py                                 # 四种检索方式在 48 条查询上的对比
+
+# 自动附上经验：只开自动附上、只开工具、两者都开，各跑 3 轮（把 1 换成 2、3）
+KB_AUTO=1 python run_eval.py all ho_auto_1 projects_holdout.json
+USE_KB=1 python run_eval.py all ho_bm25_1 projects_holdout.json
+USE_KB=1 KB_AUTO=1 python run_eval.py all ho_both_1 projects_holdout.json
 ```
 
 知识库条目的提炼脚本是 `knowledge/mine_runs.py`：从 `runs.db` 抽出报错片段和困难项目轨迹，
@@ -144,6 +151,8 @@ python -m unittest discover tests
 - `test_graph_agent.py`：LangGraph 版本的护栏和手写版一致、崩溃后续跑不重复已完成的步骤、步数上限
 - `test_knowledge.py`：Milvus Lite 里已有的 collection 在新进程里能直接检索（用假 embedding 模型）
 - `test_mcp.py`：进程内和 stdio 两种方式连 MCP server，检查工具列表和边界
+- `test_auto_knowledge.py`：失败命令附上对应条目、同一条不重复附、成功或认不出的报错不附、默认关闭；
+  手写版和 LangGraph 版都把条目附进发给模型的工具结果
 
 ## 目录
 
@@ -232,7 +241,8 @@ LangGraph 版代码多一倍，多出来的是检查点：实测跑到第 12 步
 - 评测集 10 个项目加留出集 5 个项目，新标准下全部通过，通过率已经没有区分度，只能比步数和 token
 - 知识库只有 15 条，留出集里真正遇到的问题（比如 libarchive 的可选依赖链接错误）大多没有覆盖
 - 每个配置只跑 3 轮，困难档步数的标准差有 5 到 8 步，小幅差异分不清是改动还是随机
-- 检索靠模型主动调用，调用率始终上不去，应该改成失败后自动前置
+- 检索靠模型主动调用，调用率始终上不去。已加 `KB_AUTO` 在失败后自动附上，但还没跑评测，
+  有没有用要看留出集上的步数，以及 `kb_injected` 里附上的条目是否真的对症
 - MCP server 和 Agent 用的是同一套工具检查，同样不是安全沙箱
 - 后端一次只跑一个构建（`os.environ` 里的目标三元组是全局的），第二个请求返回 409
 - Agent 端到端只在 macOS arm64 → aarch64-linux-musl 这一条路径上验证过；
